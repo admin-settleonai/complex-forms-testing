@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: complex-forms-backend
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=development
+      - PORT=3100
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    container_name: complex-forms-frontend
+    ports:
+      - "3101:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3100
+      - WDS_SOCKET_PORT=3101
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
