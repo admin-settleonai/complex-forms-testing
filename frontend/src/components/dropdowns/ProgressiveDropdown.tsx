@@ -72,42 +72,44 @@ const ProgressiveDropdown: React.FC<ProgressiveDropdownProps> = ({
   }, [value, loadOptions]);
 
   const loadOptionsDebounced = useCallback(
-    debounce(async (
+    debounce((
       inputValue: string,
       callback: (options: SelectOption[]) => void
     ) => {
-      try {
-        // Reset if search changed
-        if (inputValue !== currentSearchRef.current) {
-          offsetRef.current = 0;
-          hasMoreRef.current = true;
-          currentSearchRef.current = inputValue;
-          setAllOptions([]);
+      (async () => {
+        try {
+          // Reset if search changed
+          if (inputValue !== currentSearchRef.current) {
+            offsetRef.current = 0;
+            hasMoreRef.current = true;
+            currentSearchRef.current = inputValue;
+            setAllOptions([]);
+          }
+
+          if (!hasMoreRef.current) {
+            callback(allOptions);
+            return;
+          }
+
+          const response = await loadOptions({
+            search: inputValue,
+            limit: pageSize,
+            offset: offsetRef.current,
+          });
+
+          const newOptions = [...allOptions, ...response.items];
+          setAllOptions(newOptions);
+          offsetRef.current += response.items.length;
+          hasMoreRef.current = response.hasMore;
+
+          callback(newOptions);
+        } catch (error) {
+          console.error('Error loading options:', error);
+          callback([]);
         }
-
-        if (!hasMoreRef.current) {
-          callback(allOptions);
-          return;
-        }
-
-        const response = await loadOptions({
-          search: inputValue,
-          limit: pageSize,
-          offset: offsetRef.current,
-        });
-
-        const newOptions = [...allOptions, ...response.items];
-        setAllOptions(newOptions);
-        offsetRef.current += response.items.length;
-        hasMoreRef.current = response.hasMore;
-
-        callback(newOptions);
-      } catch (error) {
-        console.error('Error loading options:', error);
-        callback([]);
-      }
+      })();
     }, debounceMs),
-    [loadOptions, pageSize, allOptions]
+    [loadOptions, pageSize, allOptions, debounceMs]
   );
 
   const handleLoadOptions = (

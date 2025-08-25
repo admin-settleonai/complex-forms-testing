@@ -341,7 +341,7 @@ const HierarchicalFormPage: React.FC = () => {
           <li>• Selecting a parent selects all its children</li>
           <li>• Deselecting a parent deselects all its children</li>
           <li>• When all children are selected, the parent is automatically selected</li>
-          <li>• Full path is shown for selected items (e.g., "Technology > Frontend > React")</li>
+          <li>• Full path is shown for selected items (e.g., "Technology {'>'}  Frontend {'>'} React")</li>
           <li>• Multiple hierarchy levels are supported</li>
         </ul>
       </div>
