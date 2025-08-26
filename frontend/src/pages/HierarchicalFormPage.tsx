@@ -260,7 +260,7 @@ const HierarchicalFormPage: React.FC = () => {
             name="categories"
             value={formData.categories}
             onChange={(value) => setFormData(prev => ({ ...prev, categories: value }))}
-            options={categoryOptions}
+            ajaxTreeKey="categories"
             placeholder="Select categories..."
             required
             showFullPath
@@ -271,7 +271,7 @@ const HierarchicalFormPage: React.FC = () => {
             name="skills"
             value={formData.skills}
             onChange={(value) => setFormData(prev => ({ ...prev, skills: value }))}
-            options={skillOptions}
+            ajaxTreeKey="skillsTree"
             placeholder="Select skills..."
             required
             showFullPath
@@ -282,7 +282,7 @@ const HierarchicalFormPage: React.FC = () => {
             name="locations"
             value={formData.locations}
             onChange={(value) => setFormData(prev => ({ ...prev, locations: value }))}
-            options={locationOptions}
+            ajaxTreeKey="locations"
             placeholder="Select locations..."
             showFullPath
           />

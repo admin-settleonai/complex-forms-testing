@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3100;
@@ -40,31 +42,9 @@ const sessions = new Map();
 
 // Mock data for forms
 const mockFormData = {
-  countries: [
-    { id: 'US', name: 'United States', hasStates: true },
-    { id: 'CA', name: 'Canada', hasProvinces: true },
-    { id: 'UK', name: 'United Kingdom' },
-    { id: 'DE', name: 'Germany' },
-    { id: 'FR', name: 'France' },
-    { id: 'JP', name: 'Japan' },
-    { id: 'AU', name: 'Australia', hasStates: true },
-    { id: 'BR', name: 'Brazil', hasStates: true },
-    { id: 'IN', name: 'India', hasStates: true },
-    { id: 'CN', name: 'China', hasProvinces: true }
-  ],
+  countries: [],
   states: {
-    US: [
-      { id: 'CA', name: 'California' },
-      { id: 'NY', name: 'New York' },
-      { id: 'TX', name: 'Texas' },
-      { id: 'FL', name: 'Florida' },
-      { id: 'IL', name: 'Illinois' },
-      { id: 'PA', name: 'Pennsylvania' },
-      { id: 'OH', name: 'Ohio' },
-      { id: 'GA', name: 'Georgia' },
-      { id: 'NC', name: 'North Carolina' },
-      { id: 'MI', name: 'Michigan' }
-    ],
+    US: [],
     CA: [
       { id: 'ON', name: 'Ontario' },
       { id: 'QC', name: 'Quebec' },
@@ -139,13 +119,181 @@ const mockFormData = {
   jobTitles: []
 };
 
-// Generate a large list of job titles for progressive loading
-for (let i = 1; i <= 500; i++) {
-  mockFormData.jobTitles.push({
-    id: `job-${i}`,
-    name: `Job Title ${i}`,
-    department: ['Engineering', 'Sales', 'Marketing', 'HR', 'Finance'][Math.floor(Math.random() * 5)],
-    level: ['Junior', 'Mid', 'Senior', 'Lead', 'Principal'][Math.floor(Math.random() * 5)]
+// Always initialize countries and US states
+try {
+  const { getData } = require('country-list');
+  const countriesData = getData();
+  mockFormData.countries = countriesData
+    .map(c => ({ id: c.code, name: c.name, hasStates: c.code === 'US' }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+} catch (e) {
+  mockFormData.countries = [
+    { id: 'US', name: 'United States', hasStates: true },
+    { id: 'CA', name: 'Canada' },
+    { id: 'UK', name: 'United Kingdom' },
+    { id: 'DE', name: 'Germany' },
+    { id: 'FR', name: 'France' },
+  ];
+}
+
+mockFormData.states.US = [
+  { id: 'AL', name: 'Alabama' },
+  { id: 'AK', name: 'Alaska' },
+  { id: 'AZ', name: 'Arizona' },
+  { id: 'AR', name: 'Arkansas' },
+  { id: 'CA', name: 'California' },
+  { id: 'CO', name: 'Colorado' },
+  { id: 'CT', name: 'Connecticut' },
+  { id: 'DE', name: 'Delaware' },
+  { id: 'FL', name: 'Florida' },
+  { id: 'GA', name: 'Georgia' },
+  { id: 'HI', name: 'Hawaii' },
+  { id: 'ID', name: 'Idaho' },
+  { id: 'IL', name: 'Illinois' },
+  { id: 'IN', name: 'Indiana' },
+  { id: 'IA', name: 'Iowa' },
+  { id: 'KS', name: 'Kansas' },
+  { id: 'KY', name: 'Kentucky' },
+  { id: 'LA', name: 'Louisiana' },
+  { id: 'ME', name: 'Maine' },
+  { id: 'MD', name: 'Maryland' },
+  { id: 'MA', name: 'Massachusetts' },
+  { id: 'MI', name: 'Michigan' },
+  { id: 'MN', name: 'Minnesota' },
+  { id: 'MS', name: 'Mississippi' },
+  { id: 'MO', name: 'Missouri' },
+  { id: 'MT', name: 'Montana' },
+  { id: 'NE', name: 'Nebraska' },
+  { id: 'NV', name: 'Nevada' },
+  { id: 'NH', name: 'New Hampshire' },
+  { id: 'NJ', name: 'New Jersey' },
+  { id: 'NM', name: 'New Mexico' },
+  { id: 'NY', name: 'New York' },
+  { id: 'NC', name: 'North Carolina' },
+  { id: 'ND', name: 'North Dakota' },
+  { id: 'OH', name: 'Ohio' },
+  { id: 'OK', name: 'Oklahoma' },
+  { id: 'OR', name: 'Oregon' },
+  { id: 'PA', name: 'Pennsylvania' },
+  { id: 'RI', name: 'Rhode Island' },
+  { id: 'SC', name: 'South Carolina' },
+  { id: 'SD', name: 'South Dakota' },
+  { id: 'TN', name: 'Tennessee' },
+  { id: 'TX', name: 'Texas' },
+  { id: 'UT', name: 'Utah' },
+  { id: 'VT', name: 'Vermont' },
+  { id: 'VA', name: 'Virginia' },
+  { id: 'WA', name: 'Washington' },
+  { id: 'WV', name: 'West Virginia' },
+  { id: 'WI', name: 'Wisconsin' },
+  { id: 'WY', name: 'Wyoming' },
+];
+
+// Generate large datasets (guarded to avoid duplication on hot-reload)
+if (!mockFormData._initialized) {
+  // Countries: use ISO-3166 list from country-list package for completeness
+  try {
+    const { getData } = require('country-list');
+    const countriesData = getData(); // [{code:'AF', name:'Afghanistan'}, ...]
+    mockFormData.countries = countriesData
+      .map(c => ({ id: c.code, name: c.name, hasStates: c.code === 'US' }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) {
+    // Fallback minimal set if dependency missing
+    mockFormData.countries = [
+      { id: 'US', name: 'United States', hasStates: true },
+      { id: 'CA', name: 'Canada' },
+      { id: 'UK', name: 'United Kingdom' },
+      { id: 'DE', name: 'Germany' },
+      { id: 'FR', name: 'France' }
+    ];
+  }
+
+  // US states full list (50)
+  mockFormData.states.US = [
+    { id: 'AL', name: 'Alabama' },
+    { id: 'AK', name: 'Alaska' },
+    { id: 'AZ', name: 'Arizona' },
+    { id: 'AR', name: 'Arkansas' },
+    { id: 'CA', name: 'California' },
+    { id: 'CO', name: 'Colorado' },
+    { id: 'CT', name: 'Connecticut' },
+    { id: 'DE', name: 'Delaware' },
+    { id: 'FL', name: 'Florida' },
+    { id: 'GA', name: 'Georgia' },
+    { id: 'HI', name: 'Hawaii' },
+    { id: 'ID', name: 'Idaho' },
+    { id: 'IL', name: 'Illinois' },
+    { id: 'IN', name: 'Indiana' },
+    { id: 'IA', name: 'Iowa' },
+    { id: 'KS', name: 'Kansas' },
+    { id: 'KY', name: 'Kentucky' },
+    { id: 'LA', name: 'Louisiana' },
+    { id: 'ME', name: 'Maine' },
+    { id: 'MD', name: 'Maryland' },
+    { id: 'MA', name: 'Massachusetts' },
+    { id: 'MI', name: 'Michigan' },
+    { id: 'MN', name: 'Minnesota' },
+    { id: 'MS', name: 'Mississippi' },
+    { id: 'MO', name: 'Missouri' },
+    { id: 'MT', name: 'Montana' },
+    { id: 'NE', name: 'Nebraska' },
+    { id: 'NV', name: 'Nevada' },
+    { id: 'NH', name: 'New Hampshire' },
+    { id: 'NJ', name: 'New Jersey' },
+    { id: 'NM', name: 'New Mexico' },
+    { id: 'NY', name: 'New York' },
+    { id: 'NC', name: 'North Carolina' },
+    { id: 'ND', name: 'North Dakota' },
+    { id: 'OH', name: 'Ohio' },
+    { id: 'OK', name: 'Oklahoma' },
+    { id: 'OR', name: 'Oregon' },
+    { id: 'PA', name: 'Pennsylvania' },
+    { id: 'RI', name: 'Rhode Island' },
+    { id: 'SC', name: 'South Carolina' },
+    { id: 'SD', name: 'South Dakota' },
+    { id: 'TN', name: 'Tennessee' },
+    { id: 'TX', name: 'Texas' },
+    { id: 'UT', name: 'Utah' },
+    { id: 'VT', name: 'Vermont' },
+    { id: 'VA', name: 'Virginia' },
+    { id: 'WA', name: 'Washington' },
+    { id: 'WV', name: 'West Virginia' },
+    { id: 'WI', name: 'Wisconsin' },
+    { id: 'WY', name: 'Wyoming' },
+  ];
+  // Job titles (500)
+  const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Finance'];
+  const levels = ['Junior', 'Mid', 'Senior', 'Lead', 'Principal'];
+  const jobTitles = Array.from({ length: 500 }, (_, idx) => {
+    const i = idx + 1;
+    return {
+      id: `job-${i}`,
+      name: `Job Title ${i}`,
+      department: departments[Math.floor(Math.random() * departments.length)],
+      level: levels[Math.floor(Math.random() * levels.length)],
+    };
+  });
+  mockFormData.jobTitles = jobTitles;
+
+  // Skills (1000 mixed)
+  const baseSkills = mockFormData.skills.slice();
+  const skillCategories = ['Programming', 'Framework', 'DevOps', 'Cloud', 'Data', 'Security', 'Testing'];
+  const generatedSkills = Array.from({ length: 1000 }, (_, idx) => {
+    const i = idx + 1;
+    return {
+      id: `skill-${i}`,
+      name: `Skill ${i}`,
+      category: skillCategories[i % skillCategories.length],
+    };
+  });
+  mockFormData.skills = [...baseSkills, ...generatedSkills];
+
+  Object.defineProperty(mockFormData, '_initialized', {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
   });
 }
 
@@ -254,17 +402,66 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Form data endpoints
+// Countries and states served from JSON files in ./data
+const dataDir = path.join(__dirname, 'data');
+const statesDir = path.join(dataDir, 'states');
+let countriesCache = [];
+const loadCountriesFromFile = () => {
+  try {
+    const filePath = path.join(dataDir, 'countries.json');
+    if (!fs.existsSync(filePath)) {
+      // Generate from country-list and write to file
+      try {
+        const { getData } = require('country-list');
+        const list = getData().map(c => ({ id: c.code, name: c.name }));
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+        fs.writeFileSync(filePath, JSON.stringify(list, null, 2), 'utf8');
+      } catch (e) {
+        console.error('Failed to generate countries.json from country-list:', e.message);
+      }
+    }
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const list = JSON.parse(raw);
+    countriesCache = list
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        hasStates: fs.existsSync(path.join(statesDir, `${c.id}.json`))
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) {
+    console.error('Failed to load countries.json:', e.message);
+    countriesCache = [];
+  }
+};
+if (fs.existsSync(path.join(dataDir, 'countries.json'))) {
+  loadCountriesFromFile();
+}
+
 app.get('/api/form-data/countries', (req, res) => {
-  setTimeout(() => {
-    res.json(mockFormData.countries);
-  }, 300); // Simulate network delay
+  if (!countriesCache.length) {
+    loadCountriesFromFile();
+  }
+  setTimeout(() => res.json(countriesCache), 200);
 });
 
 app.get('/api/form-data/states/:countryId', (req, res) => {
   const { countryId } = req.params;
-  setTimeout(() => {
-    res.json(mockFormData.states[countryId] || []);
-  }, 500); // Simulate network delay
+  const filePath = path.join(statesDir, `${countryId}.json`);
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      const list = JSON.parse(raw);
+      setTimeout(() => res.json(list), 300);
+    } else {
+      setTimeout(() => res.json([]), 300);
+    }
+  } catch (e) {
+    console.error('Failed to load states for', countryId, e.message);
+    setTimeout(() => res.json([]), 300);
+  }
 });
 
 app.get('/api/form-data/departments', (req, res) => {
@@ -331,6 +528,149 @@ app.get('/api/form-data/job-titles', (req, res) => {
       hasMore: Number(offset) + Number(limit) < total
     });
   }, 800);
+});
+
+// Hierarchical data (for AJAX lazy loading)
+const hierarchies = {
+  categories: {
+    root: [
+      { id: 'technology', label: 'Technology', hasChildren: true },
+      { id: 'design', label: 'Design', hasChildren: true },
+    ],
+    byParent: {
+      technology: [
+        { id: 'frontend', label: 'Frontend Development', parentId: 'technology', hasChildren: true },
+        { id: 'backend', label: 'Backend Development', parentId: 'technology', hasChildren: true },
+        { id: 'mobile', label: 'Mobile Development', parentId: 'technology', hasChildren: true },
+      ],
+      frontend: [
+        { id: 'react', label: 'React', parentId: 'frontend', hasChildren: false },
+        { id: 'angular', label: 'Angular', parentId: 'frontend', hasChildren: false },
+        { id: 'vue', label: 'Vue.js', parentId: 'frontend', hasChildren: false },
+      ],
+      backend: [
+        { id: 'node', label: 'Node.js', parentId: 'backend', hasChildren: false },
+        { id: 'python', label: 'Python', parentId: 'backend', hasChildren: false },
+        { id: 'java', label: 'Java', parentId: 'backend', hasChildren: false },
+      ],
+      mobile: [
+        { id: 'ios', label: 'iOS', parentId: 'mobile', hasChildren: false },
+        { id: 'android', label: 'Android', parentId: 'mobile', hasChildren: false },
+        { id: 'react-native', label: 'React Native', parentId: 'mobile', hasChildren: false },
+      ],
+      design: [
+        { id: 'ui-design', label: 'UI Design', parentId: 'design', hasChildren: true },
+        { id: 'ux-design', label: 'UX Design', parentId: 'design', hasChildren: true },
+      ],
+      'ui-design': [
+        { id: 'web-design', label: 'Web Design', parentId: 'ui-design', hasChildren: false },
+        { id: 'mobile-design', label: 'Mobile Design', parentId: 'ui-design', hasChildren: false },
+      ],
+      'ux-design': [
+        { id: 'user-research', label: 'User Research', parentId: 'ux-design', hasChildren: false },
+        { id: 'prototyping', label: 'Prototyping', parentId: 'ux-design', hasChildren: false },
+      ],
+    },
+  },
+  skillsTree: {
+    root: [
+      { id: 'programming', label: 'Programming Languages', hasChildren: true },
+      { id: 'frameworks', label: 'Frameworks & Libraries', hasChildren: true },
+    ],
+    byParent: {
+      programming: [
+        { id: 'javascript', label: 'JavaScript', parentId: 'programming', hasChildren: false },
+        { id: 'typescript', label: 'TypeScript', parentId: 'programming', hasChildren: false },
+        { id: 'python', label: 'Python', parentId: 'programming', hasChildren: false },
+        { id: 'java', label: 'Java', parentId: 'programming', hasChildren: false },
+        { id: 'csharp', label: 'C#', parentId: 'programming', hasChildren: false },
+      ],
+      frameworks: [
+        { id: 'js-frameworks', label: 'JavaScript Frameworks', parentId: 'frameworks', hasChildren: true },
+        { id: 'backend-frameworks', label: 'Backend Frameworks', parentId: 'frameworks', hasChildren: true },
+      ],
+      'js-frameworks': [
+        { id: 'react-framework', label: 'React', parentId: 'js-frameworks', hasChildren: false },
+        { id: 'angular-framework', label: 'Angular', parentId: 'js-frameworks', hasChildren: false },
+        { id: 'vue-framework', label: 'Vue.js', parentId: 'js-frameworks', hasChildren: false },
+      ],
+      'backend-frameworks': [
+        { id: 'express', label: 'Express.js', parentId: 'backend-frameworks', hasChildren: false },
+        { id: 'django', label: 'Django', parentId: 'backend-frameworks', hasChildren: false },
+        { id: 'spring', label: 'Spring', parentId: 'backend-frameworks', hasChildren: false },
+      ],
+    },
+  },
+  locations: {
+    root: [
+      { id: 'north-america', label: 'North America', hasChildren: true },
+      { id: 'europe', label: 'Europe', hasChildren: true },
+    ],
+    byParent: {
+      'north-america': [
+        { id: 'usa', label: 'United States', parentId: 'north-america', hasChildren: true },
+        { id: 'canada', label: 'Canada', parentId: 'north-america', hasChildren: true },
+      ],
+      usa: [
+        { id: 'california', label: 'California', parentId: 'usa', hasChildren: true },
+        { id: 'new-york', label: 'New York', parentId: 'usa', hasChildren: true },
+      ],
+      california: [
+        { id: 'san-francisco', label: 'San Francisco', parentId: 'california', hasChildren: false },
+        { id: 'los-angeles', label: 'Los Angeles', parentId: 'california', hasChildren: false },
+        { id: 'san-diego', label: 'San Diego', parentId: 'california', hasChildren: false },
+      ],
+      'new-york': [
+        { id: 'nyc', label: 'New York City', parentId: 'new-york', hasChildren: false },
+        { id: 'buffalo', label: 'Buffalo', parentId: 'new-york', hasChildren: false },
+      ],
+      canada: [
+        { id: 'ontario', label: 'Ontario', parentId: 'canada', hasChildren: true },
+      ],
+      ontario: [
+        { id: 'toronto', label: 'Toronto', parentId: 'ontario', hasChildren: false },
+        { id: 'ottawa', label: 'Ottawa', parentId: 'ontario', hasChildren: false },
+      ],
+      europe: [
+        { id: 'uk', label: 'United Kingdom', parentId: 'europe', hasChildren: true },
+        { id: 'germany', label: 'Germany', parentId: 'europe', hasChildren: true },
+      ],
+      uk: [
+        { id: 'london', label: 'London', parentId: 'uk', hasChildren: false },
+        { id: 'manchester', label: 'Manchester', parentId: 'uk', hasChildren: false },
+      ],
+      germany: [
+        { id: 'berlin', label: 'Berlin', parentId: 'germany', hasChildren: false },
+        { id: 'munich', label: 'Munich', parentId: 'germany', hasChildren: false },
+      ],
+    },
+  },
+};
+
+// Hierarchical loader endpoint
+app.get('/api/form-data/hierarchy/:tree', (req, res) => {
+  const { tree } = req.params;
+  const { parentId, search = '' } = req.query;
+  const dataset = hierarchies[tree];
+  if (!dataset) {
+    return res.status(404).json({ error: 'Unknown hierarchy' });
+  }
+
+  let nodes = [];
+  if (!parentId) {
+    nodes = dataset.root;
+  } else {
+    nodes = dataset.byParent[parentId] || [];
+  }
+
+  const filtered = String(search)
+    ? nodes.filter(n => n.label.toLowerCase().includes(String(search).toLowerCase()))
+    : nodes;
+
+  // Simulate network delay
+  setTimeout(() => {
+    res.json(filtered);
+  }, 400);
 });
 
 // Form submission endpoints

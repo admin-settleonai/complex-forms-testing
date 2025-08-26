@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select, { MultiValue, SingleValue } from 'react-select';
 import { SelectOption } from '../../types';
 
@@ -15,7 +15,6 @@ interface DynamicDropdownProps {
   isSearchable?: boolean;
   className?: string;
   dependsOn?: string | null;
-  cacheKey?: string;
 }
 
 const DynamicDropdown: React.FC<DynamicDropdownProps> = ({
@@ -31,52 +30,57 @@ const DynamicDropdown: React.FC<DynamicDropdownProps> = ({
   isSearchable = true,
   className,
   dependsOn,
-  cacheKey,
 }) => {
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const loadOptionsRef = useRef(loadOptions);
+
+  // Keep latest loadOptions without retriggering fetch effect
+  useEffect(() => {
+    loadOptionsRef.current = loadOptions;
+  }, [loadOptions]);
 
   useEffect(() => {
-    // Reset when dependency changes
+    // Reset options and value when dependency changes
     if (dependsOn !== undefined) {
       setOptions([]);
-      setHasLoaded(false);
-      if (!isMulti) {
-        onChange('');
-      } else {
-        onChange([]);
-      }
+      if (!isMulti) onChange(''); else onChange([]);
     }
   }, [dependsOn, isMulti, onChange]);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchOptions = async () => {
-      // Don't load if depends on something that's not selected
-      if (dependsOn !== undefined && !dependsOn) {
-        return;
-      }
-
-      // Don't reload if already loaded (unless dependency changed)
-      if (hasLoaded && cacheKey === dependsOn) {
-        return;
-      }
-
+      if (dependsOn !== undefined && !dependsOn) return;
       setIsLoading(true);
       try {
-        const data = await loadOptions();
-        setOptions(data);
-        setHasLoaded(true);
+        const data = await loadOptionsRef.current();
+        if (!cancelled) setOptions(data);
       } catch (error) {
         console.error('Error loading options:', error);
-        setOptions([]);
+        if (!cancelled) setOptions([]);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
-
     fetchOptions();
-  }, [loadOptions, dependsOn, hasLoaded, cacheKey]);
+    return () => { cancelled = true; };
+  }, [dependsOn]);
+
+  // Fallback: ensure options load when the user opens the menu (in case effect timing misses)
+  const handleMenuOpen = async () => {
+    if (options.length > 0) return;
+    if (dependsOn !== undefined && !dependsOn) return;
+    setIsLoading(true);
+    try {
+      const data = await loadOptionsRef.current();
+      setOptions(data);
+    } catch (e) {
+      setOptions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleChange = (
     newValue: SingleValue<SelectOption> | MultiValue<SelectOption>
@@ -122,6 +126,8 @@ const DynamicDropdown: React.FC<DynamicDropdownProps> = ({
         value={getValue()}
         onChange={handleChange}
         options={options}
+        onMenuOpen={handleMenuOpen}
+        onFocus={handleMenuOpen}
         isMulti={isMulti}
         isSearchable={isSearchable}
         isLoading={isLoading}

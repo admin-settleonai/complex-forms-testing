@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import api from '../../services/api';
 import { ChevronDownIcon, ChevronRightIcon, CheckIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 
@@ -7,6 +8,7 @@ interface HierarchicalOption {
   label: string;
   children?: HierarchicalOption[];
   parent?: string;
+  hasChildren?: boolean;
 }
 
 interface HierarchicalDropdownProps {
@@ -14,7 +16,9 @@ interface HierarchicalDropdownProps {
   name: string;
   value: string[];
   onChange: (value: string[]) => void;
-  options: HierarchicalOption[];
+  options?: HierarchicalOption[]; // optional when using AJAX
+  // When set, uses backend AJAX tree loader: /api/form-data/hierarchy/:tree
+  ajaxTreeKey?: 'categories' | 'skillsTree' | 'locations';
   placeholder?: string;
   required?: boolean;
   error?: string;
@@ -27,7 +31,8 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
   name,
   value = [],
   onChange,
-  options,
+  options = [],
+  ajaxTreeKey,
   placeholder = 'Select options...',
   required = false,
   error,
@@ -36,6 +41,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [remoteOptions, setRemoteOptions] = useState<HierarchicalOption[]>(options);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +55,60 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const toggleExpanded = (nodeValue: string, event: React.MouseEvent) => {
+  // Load root nodes when using AJAX
+  useEffect(() => {
+    const loadRoot = async () => {
+      if (!ajaxTreeKey) return;
+      if (remoteOptions.length > 0) return;
+      try {
+        const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}`);
+        const roots: HierarchicalOption[] = data.map((n: any) => ({
+          value: n.id,
+          label: n.label,
+          parent: undefined,
+          hasChildren: !!n.hasChildren,
+          children: n.hasChildren ? [] : undefined,
+        }));
+        setRemoteOptions(roots);
+      } catch (e) {
+        console.error('Failed to load root nodes', e);
+      }
+    };
+    loadRoot();
+  }, [ajaxTreeKey, remoteOptions.length]);
+
+  const ensureChildrenLoaded = async (nodeValue: string) => {
+    if (!ajaxTreeKey) return;
+    const target = findOption(remoteOptions, nodeValue);
+    if (target && target.children && target.children.length > 0) return;
+    try {
+      const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}`, {
+        params: { parentId: nodeValue },
+      });
+      const children: HierarchicalOption[] = data.map((n: any) => ({
+        value: n.id,
+        label: n.label,
+        parent: n.parentId,
+        hasChildren: !!n.hasChildren,
+        children: n.hasChildren ? [] : undefined,
+      }));
+      setRemoteOptions(prev => addChildren(prev, nodeValue, children));
+    } catch (e) {
+      console.error('Failed to load children', e);
+    }
+  };
+
+  const addChildren = (opts: HierarchicalOption[], parentValue: string, children: HierarchicalOption[]): HierarchicalOption[] => {
+    const clone = JSON.parse(JSON.stringify(opts)) as HierarchicalOption[];
+    const parent = findOption(clone, parentValue);
+    if (parent) {
+      parent.children = children;
+      parent.hasChildren = children.length > 0;
+    }
+    return clone;
+  };
+
+  const toggleExpanded = async (nodeValue: string, event: React.MouseEvent) => {
     event.stopPropagation();
     const newExpanded = new Set(expandedNodes);
     if (newExpanded.has(nodeValue)) {
@@ -58,13 +117,17 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
       newExpanded.add(nodeValue);
     }
     setExpandedNodes(newExpanded);
+    if (ajaxTreeKey) {
+      await ensureChildrenLoaded(nodeValue);
+    }
   };
 
   const handleSelect = (optionValue: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
     const newValue = new Set(value);
-    const option = findOption(options, optionValue);
+    const source = ajaxTreeKey ? remoteOptions : options;
+    const option = findOption(source, optionValue);
     
     if (!option) return;
 
@@ -78,7 +141,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
       newValue.add(optionValue);
       // If it has a parent, ensure parent is selected too
       if (option.parent) {
-        selectAllParents(options, option.parent, newValue);
+        selectAllParents(source, option.parent, newValue);
       }
     }
 
@@ -119,11 +182,12 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     if (value.length === 0) return placeholder;
     
     const selectedLabels: string[] = [];
+    const source = ajaxTreeKey ? remoteOptions : options;
     value.forEach(val => {
-      const option = findOption(options, val);
+      const option = findOption(source, val);
       if (option) {
         if (showFullPath && option.parent) {
-          const path = getFullPath(options, option);
+          const path = getFullPath(source, option);
           selectedLabels.push(path);
         } else {
           selectedLabels.push(option.label);
@@ -152,7 +216,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
   };
 
   const renderOption = (option: HierarchicalOption, level: number = 0) => {
-    const hasChildren = option.children && option.children.length > 0;
+    const hasChildren = !!(option.hasChildren || (option.children && option.children.length > 0));
     const isExpanded = expandedNodes.has(option.value);
     const isSelected = value.includes(option.value);
     const isPartiallySelected = !isSelected && hasChildren && 
@@ -253,7 +317,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-96 rounded-md py-1 ring-1 ring-black ring-opacity-5 overflow-auto">
           <div className="py-1" role="tree">
-            {options.map(option => renderOption(option))}
+            {(ajaxTreeKey ? remoteOptions : options).map(option => renderOption(option))}
           </div>
           
           {value.length > 0 && (

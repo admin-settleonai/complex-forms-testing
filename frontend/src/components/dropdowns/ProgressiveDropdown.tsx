@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
-import AsyncSelect from 'react-select/async';
+import React, { useState, useEffect } from 'react';
+import { AsyncPaginate } from 'react-select-async-paginate';
 import { MultiValue, SingleValue } from 'react-select';
 import { SelectOption, PaginatedResponse } from '../../types';
-import debounce from 'lodash.debounce';
 
 interface ProgressiveDropdownProps {
   label: string;
@@ -37,14 +36,10 @@ const ProgressiveDropdown: React.FC<ProgressiveDropdownProps> = ({
   pageSize = 20,
   debounceMs = 300,
 }) => {
-  const [allOptions, setAllOptions] = useState<SelectOption[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<SelectOption[]>([]);
-  const offsetRef = useRef(0);
-  const hasMoreRef = useRef(true);
-  const currentSearchRef = useRef('');
 
   // Load initial selected values
-  React.useEffect(() => {
+  useEffect(() => {
     const loadSelectedOptions = async () => {
       if (value && (Array.isArray(value) ? value.length > 0 : true)) {
         // In a real app, you'd have an endpoint to fetch specific options by IDs
@@ -71,52 +66,30 @@ const ProgressiveDropdown: React.FC<ProgressiveDropdownProps> = ({
     loadSelectedOptions();
   }, [value, loadOptions]);
 
-  const loadOptionsDebounced = useCallback(
-    debounce((
-      inputValue: string,
-      callback: (options: SelectOption[]) => void
-    ) => {
-      (async () => {
-        try {
-          // Reset if search changed
-          if (inputValue !== currentSearchRef.current) {
-            offsetRef.current = 0;
-            hasMoreRef.current = true;
-            currentSearchRef.current = inputValue;
-            setAllOptions([]);
-          }
-
-          if (!hasMoreRef.current) {
-            callback(allOptions);
-            return;
-          }
-
-          const response = await loadOptions({
-            search: inputValue,
-            limit: pageSize,
-            offset: offsetRef.current,
-          });
-
-          const newOptions = [...allOptions, ...response.items];
-          setAllOptions(newOptions);
-          offsetRef.current += response.items.length;
-          hasMoreRef.current = response.hasMore;
-
-          callback(newOptions);
-        } catch (error) {
-          console.error('Error loading options:', error);
-          callback([]);
-        }
-      })();
-    }, debounceMs),
-    [loadOptions, pageSize, allOptions, debounceMs]
-  );
-
-  const handleLoadOptions = (
+  // AsyncPaginate loader compatible with backend pagination
+  const loadPaginatedOptions = async (
     inputValue: string,
-    callback: (options: SelectOption[]) => void
+    loadedOptions: any,
+    additional: { offset: number } | undefined
   ) => {
-    loadOptionsDebounced(inputValue, callback);
+    try {
+      const offset = additional?.offset ?? 0;
+      const response = await loadOptions({
+        search: inputValue,
+        limit: pageSize,
+        offset,
+      });
+      const options = response.items;
+      const newOffset = offset + response.items.length;
+      return {
+        options,
+        hasMore: response.hasMore,
+        additional: { offset: newOffset },
+      };
+    } catch (err) {
+      console.error('Error loading options:', err);
+      return { options: [], hasMore: false, additional: { offset: additional?.offset ?? 0 } };
+    }
   };
 
   const handleChange = (
@@ -141,12 +114,6 @@ const ProgressiveDropdown: React.FC<ProgressiveDropdownProps> = ({
     }
   };
 
-  const handleMenuScrollToBottom = () => {
-    if (hasMoreRef.current) {
-      loadOptionsDebounced(currentSearchRef.current, () => {});
-    }
-  };
-
   const customStyles = {
     control: (provided: any, state: any) => ({
       ...provided,
@@ -163,7 +130,7 @@ const ProgressiveDropdown: React.FC<ProgressiveDropdownProps> = ({
     menuList: (provided: any) => ({
       ...provided,
       maxHeight: '300px',
-      paddingBottom: hasMoreRef.current ? '30px' : '0',
+      paddingBottom: '0',
     }),
   };
 
@@ -183,35 +150,31 @@ const ProgressiveDropdown: React.FC<ProgressiveDropdownProps> = ({
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       
-      <AsyncSelect
+      <AsyncPaginate
         name={name}
         value={getValue()}
         onChange={handleChange}
-        loadOptions={handleLoadOptions}
+        loadOptions={loadPaginatedOptions}
+        additional={{ offset: 0 }}
+        debounceTimeout={debounceMs}
         isMulti={isMulti}
         placeholder={placeholder}
         styles={customStyles}
         className="react-select-container"
         classNamePrefix="react-select"
-        cacheOptions
+        cacheUniqs={[pageSize]}
         defaultOptions
-        onMenuScrollToBottom={handleMenuScrollToBottom}
         formatOptionLabel={formatOptionLabel}
         noOptionsMessage={({ inputValue }) => 
           inputValue ? 'No results found' : 'Start typing to search...'
         }
-        loadingMessage={() => 'Loading more options...'}
+        loadingMessage={() => 'Loading options...'}
       />
 
       {error && (
         <p className="mt-1 text-sm text-red-600">{error}</p>
       )}
 
-      {hasMoreRef.current && allOptions.length > 0 && (
-        <p className="mt-1 text-xs text-gray-500">
-          Scroll down to load more options...
-        </p>
-      )}
     </div>
   );
 };
