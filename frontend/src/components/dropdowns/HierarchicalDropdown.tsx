@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import api from '../../services/api';
 import { ChevronDownIcon, ChevronRightIcon, CheckIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 interface HierarchicalOption {
   value: string;
@@ -16,10 +17,10 @@ interface HierarchicalDropdownProps {
   name: string;
   value: string[];
   onChange: (value: string[]) => void;
-  options?: HierarchicalOption[]; // optional when using AJAX
-  // When set, uses backend AJAX tree loader: /api/form-data/hierarchy/:tree
-  ajaxTreeKey?: 'categories' | 'skillsTree' | 'locations';
+  // Uses backend AJAX tree loader: /api/form-data/hierarchy/:tree
+  ajaxTreeKey: 'categories' | 'skillsTree' | 'locations';
   placeholder?: string;
+  searchPlaceholder?: string;
   required?: boolean;
   error?: string;
   className?: string;
@@ -31,9 +32,9 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
   name,
   value = [],
   onChange,
-  options = [],
   ajaxTreeKey,
   placeholder = 'Select options...',
+  searchPlaceholder = 'Search...',
   required = false,
   error,
   className,
@@ -41,7 +42,13 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [remoteOptions, setRemoteOptions] = useState<HierarchicalOption[]>(options);
+  const [remoteOptions, setRemoteOptions] = useState<HierarchicalOption[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; label: string; parentId?: string; hasChildren?: boolean; pathLabels: string[]; pathIds: string[] }>>([]);
+  const [searchHasMore, setSearchHasMore] = useState(false);
+  const [searchOffset, setSearchOffset] = useState(0);
+  const searchDebounceRef = useRef<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +83,45 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     };
     loadRoot();
   }, [ajaxTreeKey, remoteOptions.length]);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      window.clearTimeout(searchDebounceRef.current);
+    }
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setSearchHasMore(false);
+      setSearchOffset(0);
+      return;
+    }
+    searchDebounceRef.current = window.setTimeout(() => {
+      performSearch(0, false);
+    }, 300);
+  }, [searchTerm, ajaxTreeKey]);
+
+  const performSearch = async (offset: number, append: boolean) => {
+    try {
+      setIsSearching(true);
+      const limit = 50;
+      const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}/search`, {
+        params: { search: searchTerm, limit, offset },
+      });
+      const items = (data.items || []) as Array<{ id: string; label: string; parentId?: string; hasChildren?: boolean; pathLabels: string[]; pathIds: string[] }>;
+      setSearchResults(prev => (append ? [...prev, ...items] : items));
+      setSearchHasMore(!!data.hasMore);
+      setSearchOffset(offset);
+    } catch (e) {
+      console.error('Search failed', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const loadMoreSearchResults = async () => {
+    if (!searchHasMore || isSearching) return;
+    await performSearch(searchOffset + 50, true);
+  };
 
   const ensureChildrenLoaded = async (nodeValue: string) => {
     if (!ajaxTreeKey) return;
@@ -126,7 +172,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     event.stopPropagation();
     
     const newValue = new Set(value);
-    const source = ajaxTreeKey ? remoteOptions : options;
+    const source = remoteOptions;
     const option = findOption(source, optionValue);
     
     if (!option) return;
@@ -182,7 +228,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     if (value.length === 0) return placeholder;
     
     const selectedLabels: string[] = [];
-    const source = ajaxTreeKey ? remoteOptions : options;
+    const source = remoteOptions;
     value.forEach(val => {
       const option = findOption(source, val);
       if (option) {
@@ -284,6 +330,58 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     return false;
   };
 
+  const upsertPath = (opts: HierarchicalOption[], pathIds: string[], pathLabels: string[]): HierarchicalOption[] => {
+    const clone = JSON.parse(JSON.stringify(opts)) as HierarchicalOption[];
+    let levelArray: HierarchicalOption[] = clone;
+    for (let i = 0; i < pathIds.length; i++) {
+      const id = pathIds[i];
+      const label = pathLabels[i] || id;
+      let node = levelArray.find(n => n.value === id);
+      if (!node) {
+        node = {
+          value: id,
+          label,
+          parent: i > 0 ? pathIds[i - 1] : undefined,
+          hasChildren: i < pathIds.length - 1,
+          children: i < pathIds.length - 1 ? [] : undefined,
+        } as HierarchicalOption;
+        levelArray.push(node);
+      } else {
+        node.label = label;
+        if (i > 0) node.parent = pathIds[i - 1];
+        if (i < pathIds.length - 1) node.hasChildren = true;
+        if (i < pathIds.length - 1 && !node.children) node.children = [];
+      }
+      if (i < pathIds.length - 1) {
+        levelArray = (node.children as HierarchicalOption[]) || [];
+      }
+    }
+    return clone;
+  };
+
+  const handleSelectFromSearch = (
+    item: { id: string; label: string; parentId?: string; hasChildren?: boolean; pathLabels: string[]; pathIds: string[] },
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
+    const newValue = new Set(value);
+    setRemoteOptions(prev => upsertPath(prev, item.pathIds, item.pathLabels));
+    const isAlreadySelected = newValue.has(item.id);
+    if (isAlreadySelected) {
+      newValue.delete(item.id);
+      const existing = findOption(remoteOptions, item.id);
+      if (existing) removeAllChildren(existing, newValue);
+    } else {
+      newValue.add(item.id);
+      if (item.pathIds && item.pathIds.length > 1) {
+        for (let i = 0; i < item.pathIds.length - 1; i++) {
+          newValue.add(item.pathIds[i]);
+        }
+      }
+    }
+    onChange(Array.from(newValue));
+  };
+
   return (
     <div className={clsx('relative', className)} ref={dropdownRef}>
       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -297,7 +395,25 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
           'relative w-full bg-white border rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm',
           error ? 'border-red-300' : 'border-gray-300'
         )}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={async () => {
+          const nextOpen = !isOpen;
+          setIsOpen(nextOpen);
+          if (nextOpen && ajaxTreeKey && remoteOptions.length === 0) {
+            try {
+              const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}`);
+              const roots: HierarchicalOption[] = data.map((n: any) => ({
+                value: n.id,
+                label: n.label,
+                parent: undefined,
+                hasChildren: !!n.hasChildren,
+                children: n.hasChildren ? [] : undefined,
+              }));
+              setRemoteOptions(roots);
+            } catch (e) {
+              console.error('Failed to load root nodes', e);
+            }
+          }
+        }}
         aria-haspopup="tree"
         aria-expanded={isOpen}
       >
@@ -316,9 +432,59 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
 
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-96 rounded-md py-1 ring-1 ring-black ring-opacity-5 overflow-auto">
-          <div className="py-1" role="tree">
-            {(ajaxTreeKey ? remoteOptions : options).map(option => renderOption(option))}
+          <div className="px-2 pb-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="block w-full rounded-md border-gray-300 pl-9 pr-3 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
+          {searchTerm.trim() ? (
+            <div className="py-1" role="listbox">
+              {isSearching && searchResults.length === 0 && (
+                <div className="px-3 py-2 text-sm text-gray-500">Searching...</div>
+              )}
+              {!isSearching && searchResults.length === 0 && (
+                <div className="px-3 py-2 text-sm text-gray-500">No results</div>
+              )}
+              {searchResults.map(item => {
+                const isSelected = value.includes(item.id);
+                const path = item.pathLabels.join(' > ');
+                return (
+                  <div
+                    key={item.id}
+                    className={clsx('flex items-center cursor-pointer hover:bg-gray-100 select-none px-2 py-2', isSelected && 'bg-blue-50')}
+                    onClick={(e) => handleSelectFromSearch(item, e)}
+                  >
+                    <span className={clsx('text-sm flex-1 truncate', isSelected && 'font-semibold text-blue-700')}>{path}</span>
+                    {isSelected && <CheckIcon className="h-4 w-4 text-blue-600" />}
+                  </div>
+                );
+              })}
+              {searchHasMore && (
+                <div className="border-t border-gray-200 px-3 py-2">
+                  <button
+                    type="button"
+                    className={clsx('text-sm text-blue-600 hover:text-blue-800', isSearching && 'opacity-50 cursor-not-allowed')}
+                    onClick={(e) => { e.stopPropagation(); loadMoreSearchResults(); }}
+                    disabled={isSearching}
+                  >
+                    {isSearching ? 'Loading…' : 'Load more'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-1" role="tree">
+              {remoteOptions.map(option => renderOption(option))}
+            </div>
+          )}
           
           {value.length > 0 && (
             <div className="border-t border-gray-200 px-3 py-2">
