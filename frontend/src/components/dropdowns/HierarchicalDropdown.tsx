@@ -62,27 +62,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load root nodes when using AJAX
-  useEffect(() => {
-    const loadRoot = async () => {
-      if (!ajaxTreeKey) return;
-      if (remoteOptions.length > 0) return;
-      try {
-        const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}`);
-        const roots: HierarchicalOption[] = data.map((n: any) => ({
-          value: n.id,
-          label: n.label,
-          parent: undefined,
-          hasChildren: !!n.hasChildren,
-          children: n.hasChildren ? [] : undefined,
-        }));
-        setRemoteOptions(roots);
-      } catch (e) {
-        console.error('Failed to load root nodes', e);
-      }
-    };
-    loadRoot();
-  }, [ajaxTreeKey, remoteOptions.length]);
+  // NOTE: Do not preload root nodes. Roots are fetched on first open (see onClick handler)
 
   useEffect(() => {
     if (searchDebounceRef.current) {

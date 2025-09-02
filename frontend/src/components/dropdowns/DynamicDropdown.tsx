@@ -48,24 +48,7 @@ const DynamicDropdown: React.FC<DynamicDropdownProps> = ({
     }
   }, [dependsOn, isMulti, onChange]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchOptions = async () => {
-      if (dependsOn !== undefined && !dependsOn) return;
-      setIsLoading(true);
-      try {
-        const data = await loadOptionsRef.current();
-        if (!cancelled) setOptions(data);
-      } catch (error) {
-        console.error('Error loading options:', error);
-        if (!cancelled) setOptions([]);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    fetchOptions();
-    return () => { cancelled = true; };
-  }, [dependsOn]);
+  // Do NOT preload options. Fetch only on first open/focus.
 
   // Fallback: ensure options load when the user opens the menu (in case effect timing misses)
   const handleMenuOpen = async () => {
