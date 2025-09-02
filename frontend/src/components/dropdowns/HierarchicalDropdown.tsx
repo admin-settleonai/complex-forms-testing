@@ -148,6 +148,17 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     }
   };
 
+  const ensureExpanded = async (nodeValue: string) => {
+    const newExpanded = new Set(expandedNodes);
+    if (!newExpanded.has(nodeValue)) {
+      newExpanded.add(nodeValue);
+      setExpandedNodes(newExpanded);
+    }
+    if (ajaxTreeKey) {
+      await ensureChildrenLoaded(nodeValue);
+    }
+  };
+
   const handleSelect = (optionValue: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
@@ -157,21 +168,30 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     
     if (!option) return;
 
-    // Toggle selection
-    if (newValue.has(optionValue)) {
-      // Deselect this option and all its children
-      newValue.delete(optionValue);
-      removeAllChildren(option, newValue);
-    } else {
-      // Select this option
-      newValue.add(optionValue);
-      // If it has a parent, ensure parent is selected too
-      if (option.parent) {
-        selectAllParents(source, option.parent, newValue);
-      }
+    const isParent = !!(option.hasChildren || (option.children && option.children.length > 0));
+    if (isParent) {
+      // Do not select parents. Expand and load children instead.
+      ensureExpanded(option.value);
+      return;
     }
 
+    // Leaf-only selection toggle
+    if (newValue.has(optionValue)) {
+      newValue.delete(optionValue);
+    } else {
+      newValue.add(optionValue);
+    }
     onChange(Array.from(newValue));
+  };
+
+  const handleRowClick = async (option: HierarchicalOption, event: React.MouseEvent) => {
+    const isParent = !!(option.hasChildren || (option.children && option.children.length > 0));
+    if (isParent) {
+      event.stopPropagation();
+      await ensureExpanded(option.value);
+      return;
+    }
+    handleSelect(option.value, event);
   };
 
   const findOption = (opts: HierarchicalOption[], value: string): HierarchicalOption | null => {
@@ -257,7 +277,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
             level > 0 && 'border-l-2 border-gray-200'
           )}
           style={{ paddingLeft: `${level * 1.5 + 0.5}rem` }}
-          onClick={(e) => handleSelect(option.value, e)}
+          onClick={(e) => handleRowClick(option, e)}
         >
           {hasChildren && (
             <button
@@ -339,26 +359,20 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     return clone;
   };
 
-  const handleSelectFromSearch = (
+  const handleSelectFromSearch = async (
     item: { id: string; label: string; parentId?: string; hasChildren?: boolean; pathLabels: string[]; pathIds: string[] },
     event: React.MouseEvent
   ) => {
     event.stopPropagation();
-    const newValue = new Set(value);
+    // Expand the full path and only select the final leaf
     setRemoteOptions(prev => upsertPath(prev, item.pathIds, item.pathLabels));
-    const isAlreadySelected = newValue.has(item.id);
-    if (isAlreadySelected) {
-      newValue.delete(item.id);
-      const existing = findOption(remoteOptions, item.id);
-      if (existing) removeAllChildren(existing, newValue);
-    } else {
-      newValue.add(item.id);
-      if (item.pathIds && item.pathIds.length > 1) {
-        for (let i = 0; i < item.pathIds.length - 1; i++) {
-          newValue.add(item.pathIds[i]);
-        }
-      }
+    // Ensure each parent id in path is expanded
+    for (let i = 0; i < item.pathIds.length - 1; i++) {
+      await ensureExpanded(item.pathIds[i]);
     }
+    const leafId = item.pathIds[item.pathIds.length - 1] || item.id;
+    const newValue = new Set(value);
+    if (newValue.has(leafId)) newValue.delete(leafId); else newValue.add(leafId);
     onChange(Array.from(newValue));
   };
 
