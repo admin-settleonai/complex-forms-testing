@@ -661,11 +661,40 @@ app.get('/api/form-data/hierarchy/:tree', (req, res) => {
     return res.status(404).json({ error: 'Unknown hierarchy' });
   }
 
+  // Resolve parentId case-insensitively and by label→id mapping so 'Design' matches id 'design'
+  const resolveParent = (ds, raw) => {
+    if (!raw || String(raw).trim() === '') return null;
+    const rawStr = String(raw);
+    const rawLc = rawStr.toLowerCase();
+    // Direct key match
+    if (ds.byParent[rawStr]) return rawStr;
+    // Case-insensitive key match
+    const keyCi = Object.keys(ds.byParent).find(k => k.toLowerCase() === rawLc);
+    if (keyCi) return keyCi;
+    // Build label→id index once per dataset
+    if (!ds._labelToId) {
+      const idx = {};
+      try { (ds.root || []).forEach(n => { if (n && n.label) idx[String(n.label).toLowerCase()] = n.id; }); } catch {}
+      try {
+        const byP = ds.byParent || {};
+        Object.keys(byP).forEach(pid => {
+          try { (byP[pid] || []).forEach(n => { if (n && n.label) idx[String(n.label).toLowerCase()] = n.id; }); } catch {}
+        });
+      } catch {}
+      ds._labelToId = idx;
+    }
+    const idFromLabel = ds._labelToId[rawLc];
+    if (idFromLabel && ds.byParent[idFromLabel]) return idFromLabel;
+    return null;
+  };
+
   let nodes = [];
   if (!parentId) {
     nodes = dataset.root;
   } else {
-    nodes = dataset.byParent[parentId] || [];
+    const resolved = resolveParent(dataset, parentId);
+    const key = resolved || parentId;
+    nodes = dataset.byParent[key] || [];
   }
 
   const filtered = String(search)
