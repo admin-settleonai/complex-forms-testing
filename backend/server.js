@@ -16,12 +16,17 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
+// Rate limiting (disabled for form-data endpoints to avoid 429s during dropdown priming/tests)
+const RATE_LIMIT_ENABLED = String(process.env.RATE_LIMIT_ENABLED || 'false').toLowerCase() === 'true';
+if (RATE_LIMIT_ENABLED) {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+  });
+  // Apply only to auth and form submission flows; do NOT apply to /api/form-data/**
+  app.use('/api/auth', limiter);
+  app.use('/api/forms', limiter);
+}
 
 // In-memory storage (replace with database in production)
 const users = [];
