@@ -15,6 +15,7 @@ import ComplexIntegrationFormPage from './pages/ComplexIntegrationFormPage';
 import WorkdayStyleFormPage from './pages/WorkdayStyleFormPage';
 import GreenhouseStyleFormPage from './pages/GreenhouseStyleFormPage';
 import LeverStyleFormPage from './pages/LeverStyleFormPage';
+import SubmittedFormsPage from './pages/SubmittedFormsPage';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
             <Route path="forms/workday-style" element={<WorkdayStyleFormPage />} />
             <Route path="forms/greenhouse-style" element={<GreenhouseStyleFormPage />} />
             <Route path="forms/lever-style" element={<LeverStyleFormPage />} />
+            <Route path="forms/submitted" element={<SubmittedFormsPage />} />
           </Route>
         </Routes>
       </Router>

@@ -35,6 +35,7 @@ const Layout: React.FC = () => {
     { name: 'Workday Style', href: '/forms/workday-style', icon: BuildingOfficeIcon },
     { name: 'Greenhouse Style', href: '/forms/greenhouse-style', icon: BriefcaseIcon },
     { name: 'Lever Style', href: '/forms/lever-style', icon: WrenchScrewdriverIcon },
+    { name: 'Submitted Forms', href: '/forms/submitted', icon: DocumentTextIcon },
   ];
 
   return (

@@ -112,6 +112,17 @@ export const formsAPI = {
     const response = await api.post(`/api/forms/multipage/${sessionId}/submit`);
     return response.data;
   },
+
+  // Submissions
+  getSubmissions: async (params?: { type?: string; kind?: string; from?: string; to?: string; q?: string }): Promise<any[]> => {
+    const response = await api.get('/api/forms/submissions', { params });
+    return response.data;
+  },
+
+  getSubmission: async (id: string): Promise<any> => {
+    const response = await api.get(`/api/forms/submissions/${id}`);
+    return response.data;
+  },
 };
 
 export default api;

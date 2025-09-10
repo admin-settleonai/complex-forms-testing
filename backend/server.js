@@ -31,6 +31,8 @@ if (RATE_LIMIT_ENABLED) {
 // In-memory storage (replace with database in production)
 const users = [];
 const sessions = new Map();
+// Submitted forms persisted to disk
+let submissions = [];
 
 // Add a demo user for testing
 (async () => {
@@ -411,6 +413,47 @@ app.post('/api/auth/login', async (req, res) => {
 const dataDir = path.join(__dirname, 'data');
 const statesDir = path.join(dataDir, 'states');
 let countriesCache = [];
+// Submissions persistence
+const submissionsFile = path.join(dataDir, 'submissions.json');
+const ensureDataDir = () => {
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+  } catch (e) {
+    console.error('Failed to ensure data directory:', e.message);
+  }
+};
+const loadSubmissionsFromFile = () => {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(submissionsFile)) {
+      fs.writeFileSync(submissionsFile, JSON.stringify([], null, 2), 'utf8');
+      submissions = [];
+      return;
+    }
+    const raw = fs.readFileSync(submissionsFile, 'utf8');
+    const list = JSON.parse(raw);
+    if (Array.isArray(list)) {
+      submissions = list;
+    } else {
+      submissions = [];
+    }
+  } catch (e) {
+    console.error('Failed to load submissions:', e.message);
+    submissions = [];
+  }
+};
+const persistSubmissionsToFile = () => {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(submissionsFile, JSON.stringify(submissions, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Failed to persist submissions:', e.message);
+  }
+};
+// initialize submissions on startup
+loadSubmissionsFromFile();
 const loadCountriesFromFile = () => {
   try {
     const filePath = path.join(dataDir, 'countries.json');
@@ -655,23 +698,26 @@ const hierarchies = {
 // Hierarchical loader endpoint
 app.get('/api/form-data/hierarchy/:tree', (req, res) => {
   const { tree } = req.params;
+  // Query parameter name is case-sensitive; only 'parentId' is accepted. Value is resolved case-insensitively below.
   const { parentId, search = '' } = req.query;
   const dataset = hierarchies[tree];
   if (!dataset) {
     return res.status(404).json({ error: 'Unknown hierarchy' });
   }
 
-  // Resolve parentId case-insensitively and by label→id mapping so 'Design' matches id 'design'
+  // Resolve parentId value case-insensitively (accept TEchnology, teCHnology, etc.)
   const resolveParent = (ds, raw) => {
     if (!raw || String(raw).trim() === '') return null;
     const rawStr = String(raw);
     const rawLc = rawStr.toLowerCase();
-    // Direct key match
+    // Prefer lowercase id direct hit
+    if (ds.byParent[rawLc]) return rawLc;
+    // Exact id match (unlikely if mixed case)
     if (ds.byParent[rawStr]) return rawStr;
-    // Case-insensitive key match
+    // Case-insensitive id match across keys
     const keyCi = Object.keys(ds.byParent).find(k => k.toLowerCase() === rawLc);
     if (keyCi) return keyCi;
-    // Build label→id index once per dataset
+    // Build label→id index once per dataset and match labels case-insensitively
     if (!ds._labelToId) {
       const idx = {};
       try { (ds.root || []).forEach(n => { if (n && n.label) idx[String(n.label).toLowerCase()] = n.id; }); } catch {}
@@ -684,7 +730,7 @@ app.get('/api/form-data/hierarchy/:tree', (req, res) => {
       ds._labelToId = idx;
     }
     const idFromLabel = ds._labelToId[rawLc];
-    if (idFromLabel && ds.byParent[idFromLabel]) return idFromLabel;
+    if (idFromLabel) return idFromLabel;
     return null;
   };
 
@@ -692,8 +738,19 @@ app.get('/api/form-data/hierarchy/:tree', (req, res) => {
   if (!parentId) {
     nodes = dataset.root;
   } else {
-    const resolved = resolveParent(dataset, parentId);
-    const key = resolved || parentId;
+    const rawStr = String(parentId);
+    const rawLc = rawStr.toLowerCase();
+    const resolved = resolveParent(dataset, rawStr);
+    const candidates = [];
+    if (resolved) candidates.push(resolved);
+    candidates.push(rawStr);
+    candidates.push(rawLc);
+    try {
+      if (dataset._labelToId && dataset._labelToId[rawLc]) {
+        candidates.push(dataset._labelToId[rawLc]);
+      }
+    } catch {}
+    const key = candidates.find(k => Array.isArray(dataset.byParent[k]) && dataset.byParent[k].length) || (resolved || rawLc);
     nodes = dataset.byParent[key] || [];
   }
 
@@ -713,12 +770,16 @@ app.post('/api/forms/basic', authenticateToken, (req, res) => {
   const submission = {
     id: formId,
     userId: req.user.id,
+    formKind: 'basic',
+    type: (req.body && (req.body.formType || req.body.type)) || 'basic',
     data: req.body,
     submittedAt: new Date().toISOString()
   };
-  
+
   sessions.set(formId, submission);
-  
+  submissions.push(submission);
+  persistSubmissionsToFile();
+
   res.json({
     success: true,
     submissionId: formId,
@@ -731,12 +792,16 @@ app.post('/api/forms/complex', authenticateToken, (req, res) => {
   const submission = {
     id: formId,
     userId: req.user.id,
+    formKind: 'complex',
+    type: (req.body && req.body.type) || 'complex',
     data: req.body,
     submittedAt: new Date().toISOString()
   };
-  
+
   sessions.set(formId, submission);
-  
+  submissions.push(submission);
+  persistSubmissionsToFile();
+
   res.json({
     success: true,
     submissionId: formId,
@@ -803,12 +868,75 @@ app.post('/api/forms/multipage/:sessionId/submit', authenticateToken, (req, res)
   
   session.submitted = true;
   session.submittedAt = new Date().toISOString();
-  
+  // Persist final submission with all pages
+  const submission = {
+    id: sessionId,
+    userId: req.user.id,
+    formKind: 'multipage',
+    type: 'multipage',
+    data: { pages: session.pages, currentPage: session.currentPage },
+    submittedAt: session.submittedAt,
+  };
+  submissions.push(submission);
+  persistSubmissionsToFile();
+
   res.json({
     success: true,
     submissionId: sessionId,
     message: 'Multi-page form submitted successfully'
   });
+});
+
+// Submitted forms list & detail endpoints
+app.get('/api/forms/submissions', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { type, kind, from, to, q } = req.query;
+
+    const fromDate = from ? new Date(String(from).length === 10 ? `${from}T00:00:00.000Z` : String(from)) : null;
+    const toDate = to ? new Date(String(to).length === 10 ? `${to}T23:59:59.999Z` : String(to)) : null;
+    const qLc = q ? String(q).toLowerCase() : '';
+    const typeLc = type ? String(type).toLowerCase() : '';
+    const kindLc = kind ? String(kind).toLowerCase() : '';
+
+    const list = submissions
+      .filter(s => s && s.userId === userId)
+      .filter(s => {
+        if (typeLc && String(s.type || '').toLowerCase() !== typeLc) return false;
+        if (kindLc && String(s.formKind || '').toLowerCase() !== kindLc) return false;
+        if (fromDate) {
+          const t = new Date(s.submittedAt).getTime();
+          if (Number.isFinite(fromDate.getTime()) && t < fromDate.getTime()) return false;
+        }
+        if (toDate) {
+          const t = new Date(s.submittedAt).getTime();
+          if (Number.isFinite(toDate.getTime()) && t > toDate.getTime()) return false;
+        }
+        if (qLc) {
+          try {
+            const hay = JSON.stringify(s.data || {}).toLowerCase();
+            if (!hay.includes(qLc)) return false;
+          } catch {}
+        }
+        return true;
+      })
+      .sort((a, b) => String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')));
+    res.json(list);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load submissions' });
+  }
+});
+
+app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const s = submissions.find(x => x && x.id === id);
+  if (!s) {
+    return res.status(404).json({ error: 'Submission not found' });
+  }
+  if (s.userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  res.json(s);
 });
 
 // Error handling middleware
