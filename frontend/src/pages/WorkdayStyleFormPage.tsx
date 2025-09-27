@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkdayDropdown from '../components/dropdowns/WorkdayDropdown';
@@ -79,31 +79,7 @@ const WorkdayStyleFormPage: React.FC = () => {
   });
   
   // No need to manage states, teams, etc. locally - WorkdayDropdown handles them
-
-  // Clear dependent fields when parent changes
-  useEffect(() => {
-    if (!formData.country1) {
-      setFormData(prev => ({ ...prev, state1: '' }));
-    }
-  }, [formData.country1]);
-
-  useEffect(() => {
-    if (!formData.country2) {
-      setFormData(prev => ({ ...prev, state2: '' }));
-    }
-  }, [formData.country2]);
-
-  useEffect(() => {
-    if (!formData.department1) {
-      setFormData(prev => ({ ...prev, team1: '' }));
-    }
-  }, [formData.department1]);
-
-  useEffect(() => {
-    if (!formData.department2) {
-      setFormData(prev => ({ ...prev, team2: '' }));
-    }
-  }, [formData.department2]);
+  // Hierarchical dropdowns now handle their own state internally
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
