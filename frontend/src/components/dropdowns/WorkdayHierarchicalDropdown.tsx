@@ -19,6 +19,7 @@ interface WorkdayHierarchicalDropdownProps {
 interface Option {
   id: string;
   name: string;
+  hasChildren?: boolean;
 }
 
 interface NavigationState {
@@ -127,13 +128,24 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
 
   const handleSelect = (option: Option) => {
     if (navigation.level === 1) {
-      // Selected a level 1 item, navigate to level 2
-      setNavigation({
-        level: 2,
-        level1Value: option.id,
-        level1Label: option.name
-      });
-      setSearchTerm('');
+      // Selected a level 1 item
+      // First, set the value to trigger GoApply's selection detection
+      onChange(option.id);
+      
+      // Then navigate to level 2 if the option has children
+      if (option.hasChildren) {
+        setNavigation({
+          level: 2,
+          level1Value: option.id,
+          level1Label: option.name
+        });
+        setSearchTerm('');
+        // Keep dropdown open for child selection
+      } else {
+        // No children, close the dropdown
+        setIsOpen(false);
+        setSearchTerm('');
+      }
     } else {
       // Selected a level 2 item, complete the selection
       const fullValue = `${navigation.level1Value}|${option.id}`;
@@ -147,15 +159,23 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     if (!value) return '';
     
     const parts = value.split('|');
-    if (parts.length === 2 && navigation.level === 2) {
-      // Find the selected option in current options
-      const selected = options.find(opt => opt.id === parts[1]);
-      if (selected) {
-        return `${navigation.level1Label} > ${selected.name}`;
+    if (parts.length === 2) {
+      // Full selection (country|state)
+      if (navigation.level === 2) {
+        const selected = options.find(opt => opt.id === parts[1]);
+        if (selected) {
+          return `${navigation.level1Label} > ${selected.name}`;
+        }
       }
+      return value;
+    } else if (parts.length === 1 && navigation.level === 2) {
+      // Just country selected, but we're viewing states
+      return navigation.level1Label || value;
     }
     
-    return value;
+    // Single value (just country)
+    const country = options.find(opt => opt.id === value);
+    return country ? country.name : value;
   };
 
   const filteredOptions = options.filter(option =>
@@ -268,7 +288,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
                     >
                       <span>{option.name}</span>
-                      {navigation.level === 1 && (
+                      {navigation.level === 1 && option.hasChildren && (
                         <svg
                           className="w-4 h-4 text-gray-400 group-hover:text-gray-600"
                           xmlns="http://www.w3.org/2000/svg"
