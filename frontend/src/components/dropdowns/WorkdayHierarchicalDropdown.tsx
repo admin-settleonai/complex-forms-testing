@@ -132,20 +132,12 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     
     if (navigation.level === 1) {
       // Selected a level 1 item
-      // First, set the value to trigger GoApply's selection detection
-      onChange(option.id);
       
-      // Trigger a DOM event that GoApply can detect
-      const button = buttonRef.current;
-      if (button) {
-        // Simulate what real Workday does
-        button.setAttribute('aria-label', option.name);
-        button.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-      
-      // Then navigate to level 2 if the option has children
+      // Check if this option has children
       if (option.hasChildren) {
         console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
+        // Don't set value yet - just navigate to show children
+        // This matches real Workday behavior
         setNavigation({
           level: 2,
           level1Value: option.id,
@@ -153,9 +145,25 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         });
         setSearchTerm('');
         // Keep dropdown open for child selection
+        
+        // Update button display to show current navigation
+        const button = buttonRef.current;
+        if (button) {
+          button.setAttribute('aria-label', option.name);
+        }
       } else {
-        console.log('[WorkdayHierarchical] Option has no children, closing');
-        // No children, close the dropdown
+        console.log('[WorkdayHierarchical] Option has no children, making final selection');
+        // This is a leaf node - make the final selection
+        onChange(option.id);
+        
+        // Trigger a DOM event that GoApply can detect
+        const button = buttonRef.current;
+        if (button) {
+          button.setAttribute('aria-label', option.name);
+          button.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        
+        // Close the dropdown
         setIsOpen(false);
         setSearchTerm('');
       }
