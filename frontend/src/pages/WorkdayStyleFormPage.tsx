@@ -275,7 +275,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             onChange={(value) => handleChange(stateField, value)}
             endpoint="/api/form-data/workday/states"
             placeholder="Select State"
-            parentValue={formData[countryField]}
+            parentValue={String(formData[countryField] || '')}
           />
         )}
 
@@ -354,7 +354,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               onChange={(value) => handleChange(teamField, value)}
               endpoint="/api/form-data/workday/teams"
               placeholder="Select Team"
-              parentValue={formData[departmentField]}
+              parentValue={String(formData[departmentField] || '')}
             />
           )}
         </div>
