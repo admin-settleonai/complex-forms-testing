@@ -75,6 +75,14 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Reload options when navigation level changes
+  useEffect(() => {
+    if (isOpen && navigation.level) {
+      console.log('[WorkdayHierarchical] Navigation changed, loading options for level:', navigation.level);
+      loadOptions();
+    }
+  }, [navigation.level, isOpen]);
+
   // Load options based on current navigation level
   const loadOptions = async () => {
     setLoading(true);
@@ -86,9 +94,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         response = await api.post(endpoints.level1, {});
       } else {
         // Load level 2 options (e.g., states for selected country)
+        console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
         response = await api.post(endpoints.level2, {
           parentValue: navigation.level1Value
         });
+        console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length);
       }
       
       setOptions(response.data);
