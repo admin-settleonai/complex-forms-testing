@@ -45,6 +45,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   const [searchTerm, setSearchTerm] = useState('');
   const [navigation, setNavigation] = useState<NavigationState>({ level: 1 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Parse the value to determine current state
@@ -127,13 +128,24 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   };
 
   const handleSelect = (option: Option) => {
+    console.log('[WorkdayHierarchical] handleSelect:', option);
+    
     if (navigation.level === 1) {
       // Selected a level 1 item
       // First, set the value to trigger GoApply's selection detection
       onChange(option.id);
       
+      // Trigger a DOM event that GoApply can detect
+      const button = buttonRef.current;
+      if (button) {
+        // Simulate what real Workday does
+        button.setAttribute('aria-label', option.name);
+        button.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      
       // Then navigate to level 2 if the option has children
       if (option.hasChildren) {
+        console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
         setNavigation({
           level: 2,
           level1Value: option.id,
@@ -142,6 +154,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         setSearchTerm('');
         // Keep dropdown open for child selection
       } else {
+        console.log('[WorkdayHierarchical] Option has no children, closing');
         // No children, close the dropdown
         setIsOpen(false);
         setSearchTerm('');
@@ -150,6 +163,14 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       // Selected a level 2 item, complete the selection
       const fullValue = `${navigation.level1Value}|${option.id}`;
       onChange(fullValue);
+      
+      // Trigger DOM event
+      const button = buttonRef.current;
+      if (button) {
+        button.setAttribute('aria-label', `${navigation.level1Label} > ${option.name}`);
+        button.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      
       setIsOpen(false);
       setSearchTerm('');
     }
@@ -194,6 +215,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       </label>
       
       <button
+        ref={buttonRef}
         type="button"
         onClick={handleToggle}
         disabled={disabled}
