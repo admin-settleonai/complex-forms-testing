@@ -16,6 +16,19 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Lightweight request logging for diagnostics
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    try {
+      const ms = Date.now() - start;
+      const userId = (req.user && req.user.id) || 'anon';
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} status=${res.statusCode} user=${userId} ${ms}ms`);
+    } catch {}
+  });
+  next();
+});
+
 // Rate limiting (disabled for form-data endpoints to avoid 429s during dropdown priming/tests)
 const RATE_LIMIT_ENABLED = String(process.env.RATE_LIMIT_ENABLED || 'false').toLowerCase() === 'true';
 if (RATE_LIMIT_ENABLED) {
@@ -310,11 +323,15 @@ const authenticateToken = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
+    console.warn(`[${new Date().toISOString()}] AUTH missing token for ${req.method} ${req.originalUrl}`);
     return res.sendStatus(401);
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) {
+      console.warn(`[${new Date().toISOString()}] AUTH invalid token for ${req.method} ${req.originalUrl}: ${err && err.message}`);
+      return res.sendStatus(403);
+    }
     req.user = user;
     next();
   });
@@ -890,6 +907,8 @@ app.post('/api/forms/multipage/:sessionId/submit', authenticateToken, (req, res)
 // Submitted forms list & detail endpoints
 app.get('/api/forms/submissions', authenticateToken, (req, res) => {
   try {
+    // Ensure we reflect latest persisted state
+    loadSubmissionsFromFile();
     const userId = req.user.id;
     const { type, kind, from, to, q } = req.query;
 
@@ -929,6 +948,8 @@ app.get('/api/forms/submissions', authenticateToken, (req, res) => {
 
 app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
+  // Ensure we reflect latest persisted state
+  loadSubmissionsFromFile();
   const s = submissions.find(x => x && x.id === id);
   if (!s) {
     return res.status(404).json({ error: 'Submission not found' });
@@ -937,6 +958,90 @@ app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   res.json(s);
+});
+
+// Workday-style endpoints (no URL parameters, using POST body)
+app.post('/api/form-data/workday/states', (req, res) => {
+  const { country, parentValue } = req.body;
+  const countryId = country || parentValue;
+  
+  if (!countryId) {
+    return res.status(400).json({ error: 'Country is required' });
+  }
+  
+  // Simulate network delay like real Workday
+  setTimeout(() => {
+    const states = mockFormData.states[countryId] || [];
+    res.json(states);
+  }, 300);
+});
+
+app.post('/api/form-data/workday/teams', (req, res) => {
+  const { department, parentValue } = req.body;
+  const deptId = department || parentValue;
+  
+  if (!deptId) {
+    return res.status(400).json({ error: 'Department is required' });
+  }
+  
+  // Simulate network delay like real Workday
+  setTimeout(() => {
+    const teams = mockFormData.teams[deptId] || [];
+    res.json(teams);
+  }, 400);
+});
+
+// Phone country codes endpoint (dynamic)
+app.post('/api/form-data/workday/phone-codes', (req, res) => {
+  // Simulate dynamic loading of phone country codes
+  setTimeout(() => {
+    res.json([
+      { id: '+1', name: 'United States (+1)' },
+      { id: '+44', name: 'United Kingdom (+44)' },
+      { id: '+49', name: 'Germany (+49)' },
+      { id: '+33', name: 'France (+33)' },
+      { id: '+61', name: 'Australia (+61)' },
+      { id: '+91', name: 'India (+91)' },
+      { id: '+86', name: 'China (+86)' },
+      { id: '+81', name: 'Japan (+81)' },
+      { id: '+82', name: 'South Korea (+82)' },
+      { id: '+55', name: 'Brazil (+55)' }
+    ]);
+  }, 500);
+});
+
+// Phone types endpoint (dynamic)
+app.post('/api/form-data/workday/phone-types', (req, res) => {
+  // Simulate dynamic loading of phone types
+  setTimeout(() => {
+    res.json([
+      { id: 'mobile', name: 'Mobile' },
+      { id: 'home', name: 'Home' },
+      { id: 'work', name: 'Work' },
+      { id: 'work_mobile', name: 'Work Mobile' },
+      { id: 'other', name: 'Other' }
+    ]);
+  }, 350);
+});
+
+// Workday form submission endpoint
+app.post('/api/forms/workday', authenticateToken, (req, res) => {
+  const submission = {
+    id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    userId: req.user.id,
+    userEmail: req.user.email,
+    formType: 'workday',
+    data: req.body,
+    submittedAt: new Date().toISOString()
+  };
+  
+  submissions.push(submission);
+  persistSubmissionsToFile();
+  
+  res.json({ 
+    message: 'Workday form submitted successfully', 
+    submissionId: submission.id 
+  });
 });
 
 // Error handling middleware

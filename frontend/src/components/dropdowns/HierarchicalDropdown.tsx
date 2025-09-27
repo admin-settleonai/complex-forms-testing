@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../../services/api';
-import { ChevronDownIcon, ChevronRightIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
@@ -43,6 +43,8 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [remoteOptions, setRemoteOptions] = useState<HierarchicalOption[]>([]);
+  const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
+  const [isLoadingRoot, setIsLoadingRoot] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Array<{ id: string; label: string; parentId?: string; hasChildren?: boolean; pathLabels: string[]; pathIds: string[] }>>([]);
@@ -108,6 +110,8 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     const target = findOption(remoteOptions, nodeValue);
     if (target && target.children && target.children.length > 0) return;
     try {
+      if (loadingNodes.has(nodeValue)) return;
+      setLoadingNodes(prev => { const next = new Set(prev); next.add(nodeValue); return next; });
       const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}`, {
         params: { parentId: nodeValue },
       });
@@ -121,6 +125,9 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
       setRemoteOptions(prev => addChildren(prev, nodeValue, children));
     } catch (e) {
       console.error('Failed to load children', e);
+    }
+    finally {
+      setLoadingNodes(prev => { const next = new Set(prev); next.delete(nodeValue); return next; });
     }
   };
 
@@ -144,7 +151,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
     }
     setExpandedNodes(newExpanded);
     if (ajaxTreeKey) {
-      await ensureChildrenLoaded(nodeValue);
+      void ensureChildrenLoaded(nodeValue);
     }
   };
 
@@ -155,7 +162,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
       setExpandedNodes(newExpanded);
     }
     if (ajaxTreeKey) {
-      await ensureChildrenLoaded(nodeValue);
+      void ensureChildrenLoaded(nodeValue);
     }
   };
 
@@ -285,12 +292,16 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
               className="p-1 hover:bg-gray-200 rounded"
               onClick={(e) => toggleExpanded(option.value, e)}
             >
-              <ChevronRightIcon
-                className={clsx(
-                  'h-4 w-4 text-gray-500 transition-transform',
-                  isExpanded && 'transform rotate-90'
-                )}
-              />
+              {loadingNodes.has(option.value) ? (
+                <ArrowPathIcon className="h-4 w-4 text-gray-500 animate-spin" />
+              ) : (
+                <ChevronRightIcon
+                  className={clsx(
+                    'h-4 w-4 text-gray-500 transition-transform',
+                    isExpanded && 'transform rotate-90'
+                  )}
+                />
+              )}
             </button>
           )}
           {!hasChildren && <div className="w-6" />}
@@ -315,7 +326,12 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
         
         {hasChildren && isExpanded && (
           <div>
-            {option.children!.map(child => renderOption(child, level + 1))}
+            {loadingNodes.has(option.value) && (!option.children || option.children.length === 0) && (
+              <div className="px-3 py-2 text-sm text-gray-500 flex items-center gap-2" style={{ paddingLeft: `${(level + 1) * 1.5 + 0.5}rem` }}>
+                <ArrowPathIcon className="h-4 w-4 animate-spin text-gray-400" /> Loading…
+              </div>
+            )}
+            {option.children && option.children.map(child => renderOption(child, level + 1))}
           </div>
         )}
       </div>
@@ -394,6 +410,7 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
           setIsOpen(nextOpen);
           if (nextOpen && ajaxTreeKey && remoteOptions.length === 0) {
             try {
+              setIsLoadingRoot(true);
               const { data } = await api.get(`/api/form-data/hierarchy/${ajaxTreeKey}`);
               const roots: HierarchicalOption[] = data.map((n: any) => ({
                 value: n.id,
@@ -405,6 +422,8 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
               setRemoteOptions(roots);
             } catch (e) {
               console.error('Failed to load root nodes', e);
+            } finally {
+              setIsLoadingRoot(false);
             }
           }
         }}
@@ -476,7 +495,13 @@ const HierarchicalDropdown: React.FC<HierarchicalDropdownProps> = ({
             </div>
           ) : (
             <div className="py-1" role="tree">
-              {remoteOptions.map(option => renderOption(option))}
+              {isLoadingRoot && remoteOptions.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500 flex items-center gap-2">
+                  <ArrowPathIcon className="h-4 w-4 animate-spin text-gray-400" /> Loading…
+                </div>
+              ) : (
+                remoteOptions.map(option => renderOption(option))
+              )}
             </div>
           )}
           

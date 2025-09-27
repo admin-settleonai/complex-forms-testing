@@ -21,6 +21,12 @@ const HierarchicalFormPage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const isValid = formData.categories.length > 0 && formData.skills.length > 0;
+  const disabledReason = !formData.categories.length
+    ? 'Select at least one Category'
+    : !formData.skills.length
+    ? 'Select at least one Skill'
+    : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,12 +147,15 @@ const HierarchicalFormPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || formData.categories.length === 0 || formData.skills.length === 0}
+              disabled={isSubmitting || !isValid}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Form'}
             </button>
           </div>
+          {!isValid && (
+            <p className="mt-2 text-xs text-red-600">{disabledReason}</p>
+          )}
         </form>
       </div>
 

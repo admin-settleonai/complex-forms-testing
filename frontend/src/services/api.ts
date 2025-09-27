@@ -113,14 +113,15 @@ export const formsAPI = {
     return response.data;
   },
 
-  // Submissions
-  getSubmissions: async (params?: { type?: string; kind?: string; from?: string; to?: string; q?: string }): Promise<any[]> => {
+  // Submitted forms list
+  getSubmissions: async (params?: {
+    type?: string;
+    kind?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+  }) => {
     const response = await api.get('/api/forms/submissions', { params });
-    return response.data;
-  },
-
-  getSubmission: async (id: string): Promise<any> => {
-    const response = await api.get(`/api/forms/submissions/${id}`);
     return response.data;
   },
 };

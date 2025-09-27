@@ -36,10 +36,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Check for existing auth token
     const token = localStorage.getItem('authToken');
     if (token) {
-      // In a real app, you'd validate the token with the backend
-      const userData = localStorage.getItem('userData');
-      if (userData) {
-        setUser(JSON.parse(userData));
+      try {
+        // Soft-validate by checking exp in JWT
+        const [, payloadB64] = token.split('.');
+        const json = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+        const expMs = (json && json.exp ? Number(json.exp) * 1000 : 0);
+        if (!expMs || Date.now() >= expMs) {
+          // Expired → clear and stay logged-out
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+        } else {
+          const userData = localStorage.getItem('userData');
+          if (userData) {
+            setUser(JSON.parse(userData));
+          }
+        }
+      } catch {
+        // If parsing fails, clear token to avoid 401 loops
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
       }
     }
     setLoading(false);
