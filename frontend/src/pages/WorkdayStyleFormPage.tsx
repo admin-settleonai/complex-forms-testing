@@ -168,7 +168,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               id={firstNameField}
               name={firstNameField}
               data-automation-id={`name--legalName--firstName--${suffix}`}
-              value={formData[firstNameField]}
+              value={String(formData[firstNameField] || '')}
               onChange={(e) => handleChange(firstNameField, e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -183,7 +183,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               id={lastNameField}
               name={lastNameField}
               data-automation-id={`name--legalName--lastName--${suffix}`}
-              value={formData[lastNameField]}
+              value={String(formData[lastNameField] || '')}
               onChange={(e) => handleChange(lastNameField, e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -197,7 +197,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             id={preferredNameField}
             name={preferredNameField}
             data-automation-id={`name--preferredCheck--${suffix}`}
-            checked={formData[preferredNameField]}
+            checked={Boolean(formData[preferredNameField])}
             onChange={(e) => handleChange(preferredNameField, e.target.checked)}
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
@@ -216,7 +216,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             id={addressField}
             name={addressField}
             data-automation-id={`address--addressLine1--${suffix}`}
-            value={formData[addressField]}
+              value={String(formData[addressField] || '')}
             onChange={(e) => handleChange(addressField, e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -232,7 +232,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               id={cityField}
               name={cityField}
               data-automation-id={`address--city--${suffix}`}
-              value={formData[cityField]}
+              value={String(formData[cityField] || '')}
               onChange={(e) => handleChange(cityField, e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -260,7 +260,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               id={postalField}
               name={postalField}
               data-automation-id={`address--postalCode--${suffix}`}
-              value={formData[postalField]}
+              value={String(formData[postalField] || '')}
               onChange={(e) => handleChange(postalField, e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -302,7 +302,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               id={phoneNumberField}
               name={phoneNumberField}
               data-automation-id={`phone--number--${suffix}`}
-              value={formData[phoneNumberField]}
+              value={String(formData[phoneNumberField] || '')}
               onChange={(e) => handleChange(phoneNumberField, e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
@@ -326,7 +326,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             id={smsOptInField}
             name={smsOptInField}
             data-automation-id={`phone--smsOptIn--${suffix}`}
-            checked={formData[smsOptInField]}
+            checked={Boolean(formData[smsOptInField])}
             onChange={(e) => handleChange(smsOptInField, e.target.checked)}
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
@@ -437,7 +437,7 @@ const WorkdayStyleFormPage: React.FC = () => {
                   id="referralSource"
                   name="referralSource"
                   data-automation-id="source--referralName"
-                  value={formData.referralSource}
+                  value={String(formData.referralSource || '')}
                   onChange={(e) => handleChange('referralSource', e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   placeholder="Enter employee name"
