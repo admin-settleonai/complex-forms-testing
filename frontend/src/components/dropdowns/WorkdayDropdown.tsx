@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../../services/api';
 
 interface WorkdayDropdownProps {
   label: string;
@@ -55,11 +55,8 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
   const loadOptions = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(endpoint, {
+      const response = await api.post(endpoint, {
         ...(parentValue !== undefined && { parentValue })
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       setOptions(response.data);
     } catch (error) {
