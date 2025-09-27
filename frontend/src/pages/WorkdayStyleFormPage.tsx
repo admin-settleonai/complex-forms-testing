@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import StaticDropdown from '../components/dropdowns/StaticDropdown';
 import WorkdayDropdown from '../components/dropdowns/WorkdayDropdown';
 
 interface FormData {
@@ -239,15 +238,14 @@ const WorkdayStyleFormPage: React.FC = () => {
           </div>
 
           <div>
-            <StaticDropdown
+            <WorkdayDropdown
               label="Country"
               name={countryField}
               dataAutomationId={`address--countryRegion--${suffix}`}
-              value={formData[countryField]}
+              value={String(formData[countryField] || '')}
               onChange={(value) => handleChange(countryField, value)}
               endpoint="/api/form-data/countries"
               placeholder="Select Country"
-              ariaLabel={`Country selection ${suffix}`}
             />
           </div>
 
@@ -273,7 +271,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             label="State/Province"
             name={stateField}
             dataAutomationId={`address--state--${suffix}`}
-            value={formData[stateField]}
+            value={String(formData[stateField] || '')}
             onChange={(value) => handleChange(stateField, value)}
             endpoint="/api/form-data/workday/states"
             placeholder="Select State"
@@ -287,7 +285,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             label="Phone Country Code"
             name={phoneCodeField}
             dataAutomationId={`phone--countryCode--${suffix}`}
-            value={formData[phoneCodeField]}
+            value={String(formData[phoneCodeField] || '')}
             onChange={(value) => handleChange(phoneCodeField, value)}
             endpoint="/api/form-data/workday/phone-codes"
             placeholder="Select Code"
@@ -312,7 +310,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             label="Phone Type"
             name={phoneTypeField}
             dataAutomationId={`phone--type--${suffix}`}
-            value={formData[phoneTypeField]}
+            value={String(formData[phoneTypeField] || '')}
             onChange={(value) => handleChange(phoneTypeField, value)}
             endpoint="/api/form-data/workday/phone-types"
             placeholder="Select Type"
@@ -341,7 +339,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             label="Department"
             name={departmentField}
             dataAutomationId={`organization--department--${suffix}`}
-            value={formData[departmentField]}
+            value={String(formData[departmentField] || '')}
             onChange={(value) => handleChange(departmentField, value)}
             endpoint="/api/form-data/departments"
             placeholder="Select Department"
@@ -352,7 +350,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               label="Team"
               name={teamField}
               dataAutomationId={`organization--team--${suffix}`}
-              value={formData[teamField]}
+              value={String(formData[teamField] || '')}
               onChange={(value) => handleChange(teamField, value)}
               endpoint="/api/form-data/workday/teams"
               placeholder="Select Team"
