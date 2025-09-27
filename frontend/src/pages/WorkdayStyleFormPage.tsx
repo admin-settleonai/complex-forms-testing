@@ -244,7 +244,7 @@ const WorkdayStyleFormPage: React.FC = () => {
               dataAutomationId={`address--countryRegion--${suffix}`}
               value={String(formData[countryField] || '')}
               onChange={(value) => handleChange(countryField, value)}
-              endpoint="/api/form-data/countries"
+              endpoint="/api/form-data/workday/countries"
               placeholder="Select Country"
             />
           </div>
@@ -341,7 +341,7 @@ const WorkdayStyleFormPage: React.FC = () => {
             dataAutomationId={`organization--department--${suffix}`}
             value={String(formData[departmentField] || '')}
             onChange={(value) => handleChange(departmentField, value)}
-            endpoint="/api/form-data/departments"
+            endpoint="/api/form-data/workday/departments"
             placeholder="Select Department"
           />
 

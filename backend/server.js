@@ -961,6 +961,20 @@ app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
 });
 
 // Workday-style endpoints (no URL parameters, using POST body)
+app.post('/api/form-data/workday/countries', (req, res) => {
+  // Simulate network delay like real Workday
+  setTimeout(() => {
+    res.json(mockFormData.countries);
+  }, 300);
+});
+
+app.post('/api/form-data/workday/departments', (req, res) => {
+  // Simulate network delay like real Workday
+  setTimeout(() => {
+    res.json(mockFormData.departments);
+  }, 400);
+});
+
 app.post('/api/form-data/workday/states', (req, res) => {
   const { country, parentValue } = req.body;
   const countryId = country || parentValue;
