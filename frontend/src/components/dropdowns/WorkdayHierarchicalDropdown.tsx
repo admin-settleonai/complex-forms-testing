@@ -163,7 +163,12 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   );
 
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
+    <div 
+      className={`relative ${className}`} 
+      ref={dropdownRef}
+      data-automation-id="multiSelectContainer"
+      data-is-hierarchical="true"
+    >
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
@@ -179,8 +184,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           ${isOpen ? 'ring-2 ring-blue-500' : 'border-gray-300'}
         `}
         data-automation-id={dataAutomationId}
+        data-uxi-widget-type="selectinput"
+        role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-autocomplete="list"
       >
         <span className={getDisplayValue() ? 'text-gray-900' : 'text-gray-400'}>
           {getDisplayValue() || placeholder}

@@ -964,14 +964,31 @@ app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
 app.post('/api/form-data/workday/countries', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
-    res.json(mockFormData.countries);
+    // Return only id, name, and hasChildren to match Workday format
+    const countriesWithHierarchy = mockFormData.countries.map(country => ({
+      id: country.id,
+      name: country.name,
+      hasChildren: !!mockFormData.states[country.id] && mockFormData.states[country.id].length > 0
+    }));
+    
+    // Debug: Log a sample to see what we're sending
+    console.log('[WORKDAY] Sample countries being sent:', countriesWithHierarchy.slice(0, 3));
+    console.log('[WORKDAY] US country:', countriesWithHierarchy.find(c => c.id === 'US'));
+    
+    res.json(countriesWithHierarchy);
   }, 300);
 });
 
 app.post('/api/form-data/workday/departments', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
-    res.json(mockFormData.departments);
+    // Return only id, name, and hasChildren to match Workday format
+    const departmentsWithHierarchy = mockFormData.departments.map(dept => ({
+      id: dept.id,
+      name: dept.name,
+      hasChildren: !!mockFormData.teams[dept.id] && mockFormData.teams[dept.id].length > 0
+    }));
+    res.json(departmentsWithHierarchy);
   }, 400);
 });
 
@@ -986,7 +1003,13 @@ app.post('/api/form-data/workday/states', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const states = mockFormData.states[countryId] || [];
-    res.json(states);
+    // Return only id, name, and hasChildren to match Workday format
+    const statesWithLeaf = states.map(state => ({
+      id: state.id,
+      name: state.name,
+      hasChildren: false
+    }));
+    res.json(statesWithLeaf);
   }, 300);
 });
 
@@ -1001,7 +1024,13 @@ app.post('/api/form-data/workday/teams', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const teams = mockFormData.teams[deptId] || [];
-    res.json(teams);
+    // Return only id, name, and hasChildren to match Workday format
+    const teamsWithLeaf = teams.map(team => ({
+      id: team.id,
+      name: team.name,
+      hasChildren: false
+    }));
+    res.json(teamsWithLeaf);
   }, 400);
 });
 
