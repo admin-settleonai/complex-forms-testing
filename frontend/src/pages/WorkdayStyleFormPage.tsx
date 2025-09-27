@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkdayDropdown from '../components/dropdowns/WorkdayDropdown';
+import WorkdayHierarchicalDropdown from '../components/dropdowns/WorkdayHierarchicalDropdown';
 
 interface FormData {
   // Source selection (radio group)
@@ -9,10 +10,8 @@ interface FormData {
   referralSource: string;
   
   // Country/State (hierarchical dropdowns)
-  country1: string;
-  state1: string;
-  country2: string;
-  state2: string;
+  countryState1: string; // Will store as "US|CA" format
+  countryState2: string;
   
   // Personal Info (text fields)
   firstName1: string;
@@ -43,10 +42,8 @@ interface FormData {
   smsOptIn2: boolean;
   
   // Department/Team (dynamic hierarchical)
-  department1: string;
-  team1: string;
-  department2: string;
-  team2: string;
+  departmentTeam1: string; // Will store as "eng|frontend" format
+  departmentTeam2: string;
 }
 
 const WorkdayStyleFormPage: React.FC = () => {
@@ -55,10 +52,8 @@ const WorkdayStyleFormPage: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     sourceType: '',
     referralSource: '',
-    country1: '',
-    state1: '',
-    country2: '',
-    state2: '',
+    countryState1: '',
+    countryState2: '',
     firstName1: '',
     lastName1: '',
     firstName2: '',
@@ -79,10 +74,8 @@ const WorkdayStyleFormPage: React.FC = () => {
     smsOptIn1: false,
     preferredName2: false,
     smsOptIn2: false,
-    department1: '',
-    team1: '',
-    department2: '',
-    team2: ''
+    departmentTeam1: '',
+    departmentTeam2: ''
   });
   
   // No need to manage states, teams, etc. locally - WorkdayDropdown handles them
@@ -137,8 +130,7 @@ const WorkdayStyleFormPage: React.FC = () => {
   };
 
   const renderFieldGroup = (suffix: '1' | '2') => {
-    const countryField = `country${suffix}` as keyof FormData;
-    const stateField = `state${suffix}` as keyof FormData;
+    const countryStateField = `countryState${suffix}` as keyof FormData;
     const firstNameField = `firstName${suffix}` as keyof FormData;
     const lastNameField = `lastName${suffix}` as keyof FormData;
     const addressField = `addressLine1_${suffix}` as keyof FormData;
@@ -149,8 +141,7 @@ const WorkdayStyleFormPage: React.FC = () => {
     const phoneTypeField = `phoneType${suffix}` as keyof FormData;
     const preferredNameField = `preferredName${suffix}` as keyof FormData;
     const smsOptInField = `smsOptIn${suffix}` as keyof FormData;
-    const departmentField = `department${suffix}` as keyof FormData;
-    const teamField = `team${suffix}` as keyof FormData;
+    const departmentTeamField = `departmentTeam${suffix}` as keyof FormData;
     
     return (
       <div className="space-y-6 border-l-4 border-blue-500 pl-6">
@@ -238,14 +229,17 @@ const WorkdayStyleFormPage: React.FC = () => {
           </div>
 
           <div>
-            <WorkdayDropdown
-              label="Country"
-              name={countryField}
-              dataAutomationId={`address--countryRegion--${suffix}`}
-              value={String(formData[countryField] || '')}
-              onChange={(value) => handleChange(countryField, value)}
-              endpoint="/api/form-data/workday/countries"
-              placeholder="Select Country"
+            <WorkdayHierarchicalDropdown
+              label="Country/State"
+              name={countryStateField}
+              dataAutomationId={`address--countryState--${suffix}`}
+              value={String(formData[countryStateField] || '')}
+              onChange={(value) => handleChange(countryStateField, value)}
+              endpoints={{
+                level1: "/api/form-data/workday/countries",
+                level2: "/api/form-data/workday/states"
+              }}
+              placeholder="Select Country/State"
             />
           </div>
 
@@ -264,20 +258,6 @@ const WorkdayStyleFormPage: React.FC = () => {
             />
           </div>
         </div>
-
-        {/* State - Dynamic based on country */}
-        {formData[countryField] && (
-          <WorkdayDropdown
-            label="State/Province"
-            name={stateField}
-            dataAutomationId={`address--state--${suffix}`}
-            value={String(formData[stateField] || '')}
-            onChange={(value) => handleChange(stateField, value)}
-            endpoint="/api/form-data/workday/states"
-            placeholder="Select State"
-            parentValue={String(formData[countryField] || '')}
-          />
-        )}
 
         {/* Phone Information */}
         <div className="grid grid-cols-3 gap-4">
@@ -334,30 +314,18 @@ const WorkdayStyleFormPage: React.FC = () => {
         </div>
 
         {/* Department/Team - Dynamic hierarchical */}
-        <div className="grid grid-cols-2 gap-4">
-          <WorkdayDropdown
-            label="Department"
-            name={departmentField}
-            dataAutomationId={`organization--department--${suffix}`}
-            value={String(formData[departmentField] || '')}
-            onChange={(value) => handleChange(departmentField, value)}
-            endpoint="/api/form-data/workday/departments"
-            placeholder="Select Department"
-          />
-
-          {formData[departmentField] && (
-            <WorkdayDropdown
-              label="Team"
-              name={teamField}
-              dataAutomationId={`organization--team--${suffix}`}
-              value={String(formData[teamField] || '')}
-              onChange={(value) => handleChange(teamField, value)}
-              endpoint="/api/form-data/workday/teams"
-              placeholder="Select Team"
-              parentValue={String(formData[departmentField] || '')}
-            />
-          )}
-        </div>
+        <WorkdayHierarchicalDropdown
+          label="Department/Team"
+          name={departmentTeamField}
+          dataAutomationId={`organization--departmentTeam--${suffix}`}
+          value={String(formData[departmentTeamField] || '')}
+          onChange={(value) => handleChange(departmentTeamField, value)}
+          endpoints={{
+            level1: "/api/form-data/workday/departments",
+            level2: "/api/form-data/workday/teams"
+          }}
+          placeholder="Select Department/Team"
+        />
       </div>
     );
   };
