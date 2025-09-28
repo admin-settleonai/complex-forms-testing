@@ -87,24 +87,28 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   const loadOptions = async () => {
     setLoading(true);
     
-    // Ensure context is set BEFORE making the request
+    // Ensure owner and context are set BEFORE making the request
     const w = window as any;
     const ownerId = dataAutomationId || name;
     
-    if (w.__goapplyContextPathByOwner && ownerId) {
-      if (navigation.level === 2 && navigation.level1Label) {
-        // Loading children - set parent context
-        w.__goapplyContextPathByOwner[ownerId] = [navigation.level1Label];
-        w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-        w.__goapplyLevelByOwner[ownerId] = 1;
-        console.log('[WorkdayHierarchical] Set context before load:', ownerId, [navigation.level1Label]);
-      } else {
-        // Loading root - clear context
-        w.__goapplyContextPathByOwner[ownerId] = [];
-        w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-        w.__goapplyLevelByOwner[ownerId] = 0;
-        console.log('[WorkdayHierarchical] Clear context before load:', ownerId, []);
-      }
+    // CRITICAL: Set owner key to ensure proper attribution
+    w.__goapplyOwnerKey = ownerId;
+    console.log('[WorkdayHierarchical] Set owner key before load:', ownerId);
+    
+    // Initialize context path object if needed
+    w.__goapplyContextPathByOwner = w.__goapplyContextPathByOwner || {};
+    w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+    
+    if (navigation.level === 2 && navigation.level1Label) {
+      // Loading children - set parent context
+      w.__goapplyContextPathByOwner[ownerId] = [navigation.level1Label];
+      w.__goapplyLevelByOwner[ownerId] = 1;
+      console.log('[WorkdayHierarchical] Set context before load:', ownerId, [navigation.level1Label]);
+    } else {
+      // Loading root - clear context
+      w.__goapplyContextPathByOwner[ownerId] = [];
+      w.__goapplyLevelByOwner[ownerId] = 0;
+      console.log('[WorkdayHierarchical] Clear context before load:', ownerId, []);
     }
     
     try {
@@ -112,20 +116,32 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       
       if (navigation.level === 1) {
         // Load level 1 options (e.g., countries)
-        console.log('[WorkdayHierarchical] Loading countries from:', endpoints.level1);
         response = await api.post(endpoints.level1, {});
       } else {
         // Load level 2 options (e.g., states for selected country)
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
         
-        // Send parent info in request body like real Workday
-        console.log('[WorkdayHierarchical] Loading states from:', endpoints.level2, 'with parent:', navigation.level1Value);
+        // Include parent context in request body like real Workday
+        // CRITICAL: Add a small delay to ensure DOM updates are visible to sniffer
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Set active prime for GoApply to attribute this request
+        const w = window as any;
+        w.__goapplyActivePrime = {
+          ownerKey: ownerId,
+          nonce: Math.random().toString(36).slice(2),
+          expiresAt: Date.now() + 5000
+        };
+        console.log('[WorkdayHierarchical] Set active prime for request:', ownerId);
+        
         response = await api.post(endpoints.level2, {
           parentValue: navigation.level1Value,
           parentLabel: navigation.level1Label,
-          contextPath: [navigation.level1Label]
+          parent: navigation.level1Label, // Alternative key
+          contextPath: [navigation.level1Label], // Match Workday's structure
+          level: 1 // Explicit level indicator
         });
-        console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length, response.data);
+        console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length);
       }
       
       setOptions(response.data);
@@ -419,6 +435,12 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                     <button
                       type="button"
                       onClick={() => handleSelect(option)}
+                      onMouseDown={(e) => {
+                        // Ensure GoApply captures the owner before click
+                        const w = window as any;
+                        w.__goapplyOwnerKey = dataAutomationId || name;
+                        console.log('[WorkdayHierarchical] Option mousedown, set owner:', dataAutomationId || name);
+                      }}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
                       role="option"
                       data-automation-id="promptOption"
