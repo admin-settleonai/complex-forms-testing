@@ -173,7 +173,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     // GoApply will track context changes
   };
 
-  const handleSelect = (option: Option) => {
+  const handleSelect = (option: Option, event?: React.MouseEvent) => {
     console.log('[WorkdayHierarchical] handleSelect:', option);
     
     if (navigation.level === 1) {
@@ -183,7 +183,16 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       if (option.hasChildren) {
         console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
         
-        // GoApply will detect the click and set owner key
+        // Ensure the click event bubbles up for GoApply to detect
+        if (event && event.currentTarget) {
+          // Dispatch a native click event that will bubble
+          const nativeEvent = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          });
+          event.currentTarget.dispatchEvent(nativeEvent);
+        }
         
         // Don't set value yet - just navigate to show children
         // This matches real Workday behavior
@@ -201,9 +210,12 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           button.setAttribute('aria-label', option.name);
         }
         
-        // Load child options immediately
+        // Load child options with minimal delay to allow GoApply to process the click
         console.log('[WorkdayHierarchical] Loading child options for parent:', option.id);
-        loadOptions();
+        // Use requestAnimationFrame to ensure DOM updates and event handlers complete
+        requestAnimationFrame(() => {
+          loadOptions();
+        });
       } else {
         console.log('[WorkdayHierarchical] Option has no children, making final selection');
         // This is a leaf node - make the final selection
@@ -382,7 +394,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                   <li key={option.id}>
                     <button
                       type="button"
-                      onClick={() => handleSelect(option)}
+                      onClick={(e) => handleSelect(option, e)}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
                       role="option"
                       data-automation-id="promptOption"
