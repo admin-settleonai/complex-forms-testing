@@ -971,8 +971,9 @@ app.post('/api/form-data/workday/countries', (req, res) => {
   setTimeout(() => {
     // Return label and value to match real Workday format
     const countriesWithHierarchy = mockFormData.countries.map(country => ({
+      label: country.name,
       value: country.id,  // Keep country codes as values
-      label: country.name
+      id: country.id
     }));
     
     // Debug: Log a sample to see what we're sending
@@ -988,8 +989,9 @@ app.post('/api/form-data/workday/departments', (req, res) => {
   setTimeout(() => {
     // Return label and value to match real Workday format
     const departmentsWithHierarchy = mockFormData.departments.map(dept => ({
+      label: dept.name,
       value: dept.name,
-      label: dept.name
+      id: dept.id
     }));
     res.json(departmentsWithHierarchy);
   }, 400);
@@ -1014,9 +1016,11 @@ app.post('/api/form-data/workday/states', (req, res) => {
         console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
       }
       // Return label and value to match real Workday format
+      // Make label and value the same for states (like real Workday)
       const statesWithLeaf = states.map(state => ({
+        label: state.name,
         value: state.name,
-        label: state.name
+        id: state.id
       }));
       res.json(statesWithLeaf);
     }, 100); // Minimal delay for realistic network simulation
@@ -1033,11 +1037,12 @@ app.post('/api/form-data/workday/teams', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const teams = mockFormData.teams[deptId] || [];
-    // Return label and value to match real Workday format
-    const teamsWithLeaf = teams.map(team => ({
-      value: team.name,
-      label: team.name
-    }));
+      // Return label and value to match real Workday format
+      const teamsWithLeaf = teams.map(team => ({
+        label: team.name,
+        value: team.name,
+        id: team.id
+      }));
     res.json(teamsWithLeaf);
   }, 400);
 });
