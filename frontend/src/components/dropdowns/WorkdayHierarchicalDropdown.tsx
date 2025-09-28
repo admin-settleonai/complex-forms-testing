@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../../services/api';
 
+// Get base URL from environment
+const API_URL = process.env.REACT_APP_API_URL || 'https://api.complex-forms.goapply.today';
+
 interface WorkdayHierarchicalDropdownProps {
   label: string;
   name: string;
@@ -115,8 +118,16 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       let response;
       
       if (navigation.level === 1) {
-        // Load level 1 options (e.g., countries)
-        response = await api.post(endpoints.level1, {});
+        // Load level 1 options (e.g., countries) - use native fetch
+        const fetchResponse = await fetch(`${API_URL}${endpoints.level1}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({})
+        });
+        const data = await fetchResponse.json();
+        response = { data };
       } else {
         // Load level 2 options (e.g., states for selected country)
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
@@ -134,14 +145,23 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         };
         console.log('[WorkdayHierarchical] Set active prime for request:', ownerId);
         
-        response = await api.post(endpoints.level2, {
-          parentValue: navigation.level1Value,
-          parentLabel: navigation.level1Label,
-          parent: navigation.level1Label, // Alternative key
-          contextPath: [navigation.level1Label], // Match Workday's structure
-          level: 1 // Explicit level indicator
+        // Use native fetch to ensure GoApply can intercept
+        const fetchResponse = await fetch(`${API_URL}${endpoints.level2}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            parentValue: navigation.level1Value,
+            parentLabel: navigation.level1Label,
+            parent: navigation.level1Label, // Alternative key
+            contextPath: [navigation.level1Label], // Match Workday's structure
+            level: 1 // Explicit level indicator
+          })
         });
-        console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length);
+        const data = await fetchResponse.json();
+        response = { data };
+        console.log('[WorkdayHierarchical] Loaded level 2 options:', data.length);
       }
       
       setOptions(response.data);
