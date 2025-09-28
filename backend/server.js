@@ -965,23 +965,6 @@ app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
 });
 
 // Workday-style endpoints (no URL parameters, using POST body)
-app.post('/api/form-data/workday/countries', (req, res) => {
-  // Simulate network delay like real Workday
-  setTimeout(() => {
-    // Return only id, name, and hasChildren to match Workday format
-    const countriesWithHierarchy = mockFormData.countries.map(country => ({
-      id: country.id,
-      name: country.name,
-      hasChildren: !!mockFormData.states[country.id] && mockFormData.states[country.id].length > 0
-    }));
-    
-    // Debug: Log a sample to see what we're sending
-    console.log('[WORKDAY] Sample countries being sent:', countriesWithHierarchy.slice(0, 3));
-    console.log('[WORKDAY] US country:', countriesWithHierarchy.find(c => c.id === 'US'));
-    
-    res.json(countriesWithHierarchy);
-  }, 300);
-});
 
 app.post('/api/form-data/workday/departments', (req, res) => {
   // Simulate network delay like real Workday
@@ -996,21 +979,45 @@ app.post('/api/form-data/workday/departments', (req, res) => {
   }, 400);
 });
 
-app.post('/api/form-data/workday/states', (req, res) => {
-  const { country, parentValue } = req.body;
-  const countryId = country || parentValue;
+// Separate endpoints for countries and states to make hierarchy clear
+app.post('/api/form-data/workday/countries', (req, res) => {
+  console.log('[WORKDAY-COUNTRIES] Loading countries');
   
-  console.log('[WORKDAY-STATES] Request body:', req.body);
-  console.log('[WORKDAY-STATES] Country ID:', countryId);
+  // Set headers to indicate root level
+  res.setHeader('X-GoApply-Level', '0');
+  res.setHeader('X-GoApply-Context', '[]');
   
-  if (!countryId) {
+  // Simulate network delay like real Workday
+  setTimeout(() => {
+    // Return with hasChildren flag
+    const countriesWithHierarchy = mockFormData.countries.map(country => ({
+      id: country.id,
+      name: country.name,
+      hasChildren: country.hasStates || false
+    }));
+    res.json(countriesWithHierarchy);
+  }, 200);
+});
+
+app.post('/api/form-data/workday/states/:country', (req, res) => {
+  const { country } = req.params;
+  const { contextPath } = req.body;
+  
+  console.log('[WORKDAY-STATES] Loading states for:', country);
+  console.log('[WORKDAY-STATES] Context path:', contextPath);
+  
+  // Add context headers for GoApply to detect
+  res.setHeader('X-GoApply-Level', '1');
+  res.setHeader('X-GoApply-Context', JSON.stringify([country]));
+  
+  if (!country) {
     return res.status(400).json({ error: 'Country is required' });
   }
   
   // Simulate network delay like real Workday
   setTimeout(() => {
-    const states = mockFormData.states[countryId] || [];
-    console.log(`[WORKDAY-STATES] Found ${states.length} states for ${countryId}`);
+    const states = mockFormData.states[country] || [];
+    console.log(`[WORKDAY-STATES] Found ${states.length} states for ${country}`);
     if (states.length > 0) {
       console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
     }
