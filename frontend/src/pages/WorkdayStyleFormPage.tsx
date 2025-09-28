@@ -209,7 +209,6 @@ const WorkdayStyleFormPage: React.FC = () => {
               label="Country/State"
               name={countryStateField}
               dataAutomationId={`address--countryState--${suffix}`}
-              goapplyId="fld_1nupd61"
               value={String(formData[countryStateField] || '')}
               onChange={(value) => handleChange(countryStateField, value)}
               endpoints={{

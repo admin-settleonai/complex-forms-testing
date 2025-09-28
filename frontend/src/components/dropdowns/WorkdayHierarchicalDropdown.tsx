@@ -10,7 +10,6 @@ interface WorkdayHierarchicalDropdownProps {
   value: string;
   onChange: (value: string) => void;
   dataAutomationId?: string;
-  goapplyId?: string; // Optional GoApply field ID for proper owner key attribution
   endpoints: {
     level1: string;
     level2: string;
@@ -38,7 +37,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   value,
   onChange,
   dataAutomationId,
-  goapplyId,
   endpoints,
   placeholder = 'Select...',
   disabled = false,
@@ -92,30 +90,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   const loadOptions = async () => {
     setLoading(true);
     
-    // Ensure owner and context are set BEFORE making the request
-    const w = window as any;
-    // Use goapplyId if provided, otherwise fall back to dataAutomationId or name
-    const ownerId = goapplyId || dataAutomationId || name;
-    
-    // CRITICAL: Set owner key to ensure proper attribution
-    w.__goapplyOwnerKey = ownerId;
-    console.log('[WorkdayHierarchical] Set owner key before load:', ownerId);
-    
-    // Initialize context path object if needed
-    w.__goapplyContextPathByOwner = w.__goapplyContextPathByOwner || {};
-    w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-    
-    if (navigation.level === 2 && navigation.level1Label) {
-      // Loading children - set parent context
-      w.__goapplyContextPathByOwner[ownerId] = [navigation.level1Label];
-      w.__goapplyLevelByOwner[ownerId] = 1;
-      console.log('[WorkdayHierarchical] Set context before load:', ownerId, [navigation.level1Label]);
-    } else {
-      // Loading root - clear context
-      w.__goapplyContextPathByOwner[ownerId] = [];
-      w.__goapplyLevelByOwner[ownerId] = 0;
-      console.log('[WorkdayHierarchical] Clear context before load:', ownerId, []);
-    }
+    // Let GoApply handle owner tracking through DOM injection
     
     try {
       let response;
@@ -139,14 +114,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // CRITICAL: Add a small delay to ensure DOM updates are visible to sniffer
         await new Promise(resolve => setTimeout(resolve, 50));
         
-        // Set active prime for GoApply to attribute this request
-        const w = window as any;
-        w.__goapplyActivePrime = {
-          ownerKey: ownerId,
-          nonce: Math.random().toString(36).slice(2),
-          expiresAt: Date.now() + 5000
-        };
-        console.log('[WorkdayHierarchical] Set active prime for request:', ownerId);
+        // GoApply will track the request attribution
         
         // Use native fetch to ensure GoApply can intercept
         const fetchResponse = await fetch(`${API_URL}${endpoints.level2}`, {
@@ -192,26 +160,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
 
   const handleToggle = () => {
     if (!disabled) {
-      // Set context path BEFORE opening to ensure sniffer captures it correctly
-      const w = window as any;
-      const ownerId = goapplyId || dataAutomationId || name;
-      
-      if (!isOpen && w.__goapplyContextPathByOwner && ownerId) {
-        // Opening dropdown - ensure context reflects current navigation state
-        if (navigation.level === 2 && navigation.level1Label) {
-          // We're at level 2, set context to parent
-          w.__goapplyContextPathByOwner[ownerId] = [navigation.level1Label];
-          w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-          w.__goapplyLevelByOwner[ownerId] = 1;
-          console.log('[WorkdayHierarchical] Set context on open:', ownerId, [navigation.level1Label]);
-        } else {
-          // We're at root level
-          w.__goapplyContextPathByOwner[ownerId] = [];
-          w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-          w.__goapplyLevelByOwner[ownerId] = 0;
-          console.log('[WorkdayHierarchical] Reset context on open:', ownerId, []);
-        }
-      }
+      // GoApply will track context through DOM events
       
       setIsOpen(!isOpen);
       setSearchTerm('');
@@ -223,14 +172,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     onChange(''); // Clear the selection
     setSearchTerm('');
     
-    // Reset context path when going back
-    const w = window as any;
-        const ownerId = goapplyId || dataAutomationId || name;
-    if (w.__goapplyContextPathByOwner && ownerId) {
-      w.__goapplyContextPathByOwner[ownerId] = [];
-      w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-      w.__goapplyLevelByOwner[ownerId] = 0;
-    }
+    // GoApply will track context changes
   };
 
   const handleSelect = (option: Option) => {
@@ -243,13 +185,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       if (option.hasChildren) {
         console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
         
-        // CRITICAL: Set owner key for GoApply before navigation
-        const w = window as any;
-        const ownerId = goapplyId || dataAutomationId || name;
-        if (w.__goapplyOwnerKey !== ownerId) {
-          w.__goapplyOwnerKey = ownerId;
-          console.log('[WorkdayHierarchical] Set owner key:', ownerId);
-        }
+        // GoApply will detect the click and set owner key
         
         // Don't set value yet - just navigate to show children
         // This matches real Workday behavior
@@ -343,7 +279,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       ref={dropdownRef}
       data-automation-id="multiSelectContainer"
       data-is-hierarchical="true"
-      data-goapply-id={goapplyId || dataAutomationId || name}
     >
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
@@ -362,7 +297,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         `}
         data-automation-id={dataAutomationId}
         data-uxi-widget-type="selectinput"
-        data-goapply-owner={goapplyId || dataAutomationId || name}
         data-hierarchy-level={navigation.level.toString()}
         data-parent-value={navigation.level1Value || ''}
         data-parent-label={navigation.level1Label || ''}
