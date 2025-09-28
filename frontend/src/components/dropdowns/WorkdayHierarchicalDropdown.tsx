@@ -165,7 +165,20 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // Trigger immediate load to ensure request fires
         setTimeout(() => {
           try {
-            console.log('[WorkdayHierarchical] Forcing loadOptions for parent:', option.id);
+            // Prime GoApply sniffer with owner and context so child fetch is attributed
+            const w: any = window as any;
+            w.__goapplyContextPathByOwner = w.__goapplyContextPathByOwner || {};
+            w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+            const oc = (w.__goapplyOptionsCache && typeof w.__goapplyOptionsCache === 'object') ? w.__goapplyOptionsCache : {};
+            const ownerKeys = Object.keys(oc);
+            const ownerKey = ownerKeys && ownerKeys.length > 0 ? ownerKeys[0] : null;
+            if (ownerKey) {
+              try { w.__goapplyContextPathByOwner[ownerKey] = [option.name]; } catch {}
+              try { w.__goapplyLevelByOwner[ownerKey] = 1; } catch {}
+              try { w.__goapplyOwnerKey = ownerKey; } catch {}
+              try { w.__goapplyActivePrime = { ownerKey, nonce: Math.random().toString(36).slice(2), expiresAt: Date.now() + 20000 }; } catch {}
+            }
+            console.log('[WorkdayHierarchical] Forcing loadOptions for parent:', option.id, 'ownerKey=', ownerKey);
             loadOptions();
           } catch (e) {
             console.log('[WorkdayHierarchical] loadOptions error:', e);
