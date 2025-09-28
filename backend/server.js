@@ -969,11 +969,10 @@ app.post('/api/form-data/workday/countries', (req, res) => {
   // Simulate network delay like real Workday
   // Return data quickly - GoApply should handle synchronization
   setTimeout(() => {
-    // Return only id, name, and hasChildren to match Workday format
+    // Return only id and name to match real Workday format (no hasChildren)
     const countriesWithHierarchy = mockFormData.countries.map(country => ({
       id: country.id,
-      name: country.name,
-      hasChildren: !!mockFormData.states[country.id] && mockFormData.states[country.id].length > 0
+      name: country.name
     }));
     
     // Debug: Log a sample to see what we're sending
@@ -987,11 +986,10 @@ app.post('/api/form-data/workday/countries', (req, res) => {
 app.post('/api/form-data/workday/departments', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
-    // Return only id, name, and hasChildren to match Workday format
+    // Return only id and name to match real Workday format (no hasChildren)
     const departmentsWithHierarchy = mockFormData.departments.map(dept => ({
       id: dept.id,
-      name: dept.name,
-      hasChildren: !!mockFormData.teams[dept.id] && mockFormData.teams[dept.id].length > 0
+      name: dept.name
     }));
     res.json(departmentsWithHierarchy);
   }, 400);
@@ -1015,11 +1013,10 @@ app.post('/api/form-data/workday/states', (req, res) => {
       if (states.length > 0) {
         console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
       }
-      // Return only id, name, and hasChildren to match Workday format
+      // Return only id and name to match real Workday format (no hasChildren)
       const statesWithLeaf = states.map(state => ({
         id: state.id,
-        name: state.name,
-        hasChildren: false
+        name: state.name
       }));
       res.json(statesWithLeaf);
     }, 100); // Minimal delay for realistic network simulation
@@ -1036,12 +1033,11 @@ app.post('/api/form-data/workday/teams', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const teams = mockFormData.teams[deptId] || [];
-    // Return only id, name, and hasChildren to match Workday format
-    const teamsWithLeaf = teams.map(team => ({
-      id: team.id,
-      name: team.name,
-      hasChildren: false
-    }));
+      // Return only id and name to match real Workday format (no hasChildren)
+      const teamsWithLeaf = teams.map(team => ({
+        id: team.id,
+        name: team.name
+      }));
     res.json(teamsWithLeaf);
   }, 400);
 });

@@ -22,7 +22,6 @@ interface WorkdayHierarchicalDropdownProps {
 interface Option {
   id: string;
   name: string;
-  hasChildren?: boolean;
 }
 
 interface NavigationState {
@@ -47,7 +46,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [navigation, setNavigation] = useState<NavigationState>({ level: 1 });
-  const [selectedLevel1, setSelectedLevel1] = useState<Option | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +144,14 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   // Load options when dropdown opens or navigation changes
   useEffect(() => {
     if (isOpen) {
-      loadOptions();
+      // Only load if we don't already have options for the current level
+      const needsLoad = navigation.level === 1 
+        ? options.length === 0  // Load countries if empty
+        : true;  // Always load children when navigation changes to level 2
+        
+      if (needsLoad) {
+        loadOptions();
+      }
     }
   }, [isOpen, navigation.level, navigation.level1Value]);
 
@@ -167,8 +172,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         if (!navigation.level1Value) {
           setNavigation({ level: 1 });
         }
-        // Clear any selection state when reopening
-        setSelectedLevel1(null);
       }
       
       setIsOpen(!isOpen);
@@ -180,7 +183,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     setNavigation({ level: 1 });
     onChange(''); // Clear the selection
     setSearchTerm('');
-    setSelectedLevel1(null); // Clear selection state
     
     // GoApply will track context changes
   };
@@ -191,24 +193,31 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     if (navigation.level === 1) {
       // Selected a level 1 item
       
-      // Check if this option has children
-      if (option.hasChildren) {
-        console.log('[WorkdayHierarchical] Option has children, selecting parent but staying at level 1');
+      // Check if this option has children based on hierarchical structure
+      // For countries, US, CA, and AU have states
+      const hasChildren = navigation.level === 1 && ['US', 'CA', 'AU'].includes(option.id);
+      
+      if (hasChildren) {
+        console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
         
-        // Real Workday DOES trigger the selection, but backend knows it's hierarchical
-        onChange(option.id);
-        setSelectedLevel1(option);
+        // Don't set value yet - just navigate to show children
+        // This matches real Workday behavior
+        setNavigation({
+          level: 2,
+          level1Value: option.id,
+          level1Label: option.name
+        });
         setSearchTerm('');
+        // Keep dropdown open for child selection
         
-        // Update button display to show selection
+        // Update button display to show current navigation
         const button = buttonRef.current;
         if (button) {
           button.setAttribute('aria-label', option.name);
-          button.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
-        // Keep dropdown open but stay at level 1
-        // User needs to explicitly drill in (e.g., click a chevron)
+        // Child options will be loaded by useEffect when navigation changes
+        console.log('[WorkdayHierarchical] Navigation updated, useEffect will load child options for:', option.id);
       } else {
         console.log('[WorkdayHierarchical] Option has no children, making final selection');
         // This is a leaf node - make the final selection
@@ -383,59 +392,35 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
               </div>
             ) : (
               <ul className="py-1">
-                {filteredOptions.map((option) => {
-                  const isSelected = selectedLevel1?.id === option.id;
-                  return (
-                    <li key={option.id}>
-                      <div
-                        className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between group ${
-                          isSelected ? 'bg-blue-50' : 'hover:bg-gray-100'
-                        }`}
-                        role="option"
-                        data-automation-id="promptOption"
-                        data-automation-label={option.name}
-                        aria-selected={isSelected}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleSelect(option)}
-                          className="flex-1 text-left"
+                {filteredOptions.map((option) => (
+                  <li key={option.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(option)}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
+                      role="option"
+                      data-automation-id="promptOption"
+                      data-automation-label={option.name}
+                      aria-selected={false}
+                    >
+                      <span>{option.name}</span>
+                      {navigation.level === 1 && ['US', 'CA', 'AU'].includes(option.id) && (
+                        <svg
+                          className="w-4 h-4 text-gray-400 group-hover:text-gray-600"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
                         >
-                          <span className={isSelected ? 'font-medium text-blue-700' : ''}>{option.name}</span>
-                        </button>
-                        {navigation.level === 1 && option.hasChildren && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              console.log('[WorkdayHierarchical] Drilling into:', option);
-                              setNavigation({
-                                level: 2,
-                                level1Value: option.id,
-                                level1Label: option.name
-                              });
-                              setSelectedLevel1(null);
-                            }}
-                            className="p-1 rounded hover:bg-gray-200"
-                            aria-label={`Drill into ${option.name}`}
-                          >
-                            <svg
-                              className="w-4 h-4 text-gray-400 hover:text-gray-600"
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
+                          <path
+                            fillRule="evenodd"
+                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
