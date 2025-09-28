@@ -144,12 +144,16 @@ try {
   const { getData } = require('country-list');
   const countriesData = getData();
   mockFormData.countries = countriesData
-    .map(c => ({ id: c.code, name: c.name, hasStates: c.code === 'US' }))
+    .map(c => ({ 
+      id: c.code, 
+      name: c.name, 
+      hasStates: ['US', 'CA', 'AU'].includes(c.code) 
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 } catch (e) {
   mockFormData.countries = [
     { id: 'US', name: 'United States', hasStates: true },
-    { id: 'CA', name: 'Canada' },
+    { id: 'CA', name: 'Canada', hasStates: true },
     { id: 'UK', name: 'United Kingdom' },
     { id: 'DE', name: 'Germany' },
     { id: 'FR', name: 'France' },
@@ -996,6 +1000,9 @@ app.post('/api/form-data/workday/states', (req, res) => {
   const { country, parentValue } = req.body;
   const countryId = country || parentValue;
   
+  console.log('[WORKDAY-STATES] Request body:', req.body);
+  console.log('[WORKDAY-STATES] Country ID:', countryId);
+  
   if (!countryId) {
     return res.status(400).json({ error: 'Country is required' });
   }
@@ -1003,6 +1010,10 @@ app.post('/api/form-data/workday/states', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const states = mockFormData.states[countryId] || [];
+    console.log(`[WORKDAY-STATES] Found ${states.length} states for ${countryId}`);
+    if (states.length > 0) {
+      console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
+    }
     // Return only id, name, and hasChildren to match Workday format
     const statesWithLeaf = states.map(state => ({
       id: state.id,
