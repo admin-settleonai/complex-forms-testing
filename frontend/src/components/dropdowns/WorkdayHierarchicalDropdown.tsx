@@ -145,7 +145,14 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   // Load options when dropdown opens or navigation changes
   useEffect(() => {
     if (isOpen) {
-      loadOptions();
+      // Only load if we don't already have options for the current level
+      const needsLoad = navigation.level === 1 
+        ? options.length === 0  // Load countries if empty
+        : true;  // Always load children when navigation changes to level 2
+        
+      if (needsLoad) {
+        loadOptions();
+      }
     }
   }, [isOpen, navigation.level, navigation.level1Value]);
 
@@ -207,9 +214,8 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           button.setAttribute('aria-label', option.name);
         }
         
-        // Load child options immediately - GoApply should handle synchronization
-        console.log('[WorkdayHierarchical] Loading child options for parent:', option.id);
-        loadOptions();
+        // Child options will be loaded by useEffect when navigation changes
+        console.log('[WorkdayHierarchical] Navigation updated, useEffect will load child options for:', option.id);
       } else {
         console.log('[WorkdayHierarchical] Option has no children, making final selection');
         // This is a leaf node - make the final selection
