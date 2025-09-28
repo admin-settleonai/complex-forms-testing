@@ -160,6 +160,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     if (!disabled) {
       // GoApply will track context through DOM events
       
+      if (!isOpen) {
+        // Opening dropdown - reset to root level
+        setNavigation({ level: 1 });
+      }
+      
       setIsOpen(!isOpen);
       setSearchTerm('');
     }
