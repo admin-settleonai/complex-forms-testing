@@ -117,11 +117,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // Load level 2 options (e.g., states for selected country)
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
         
-        // Use URL path that includes parent to make hierarchy clear to GoApply
-        const statesUrl = endpoints.level2.replace('/states', `/states/${navigation.level1Value}`);
-        
-        response = await api.post(statesUrl, {
-          contextPath: [navigation.level1Label] // Include for reference
+        // Send parent info in request body like real Workday
+        response = await api.post(endpoints.level2, {
+          parentValue: navigation.level1Value,
+          parentLabel: navigation.level1Label,
+          contextPath: [navigation.level1Label]
         });
         console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length);
       }

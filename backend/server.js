@@ -999,25 +999,28 @@ app.post('/api/form-data/workday/countries', (req, res) => {
   }, 200);
 });
 
-app.post('/api/form-data/workday/states/:country', (req, res) => {
-  const { country } = req.params;
-  const { contextPath } = req.body;
+app.post('/api/form-data/workday/states', (req, res) => {
+  const { country, parentValue, contextPath } = req.body;
+  const countryId = country || parentValue;
   
-  console.log('[WORKDAY-STATES] Loading states for:', country);
+  console.log('[WORKDAY-STATES] Request body:', req.body);
+  console.log('[WORKDAY-STATES] Country ID:', countryId);
   console.log('[WORKDAY-STATES] Context path:', contextPath);
   
   // Add context headers for GoApply to detect
-  res.setHeader('X-GoApply-Level', '1');
-  res.setHeader('X-GoApply-Context', JSON.stringify([country]));
+  if (contextPath && Array.isArray(contextPath) && contextPath.length > 0) {
+    res.setHeader('X-GoApply-Context', JSON.stringify(contextPath));
+    res.setHeader('X-GoApply-Level', contextPath.length.toString());
+  }
   
-  if (!country) {
+  if (!countryId) {
     return res.status(400).json({ error: 'Country is required' });
   }
   
   // Simulate network delay like real Workday
   setTimeout(() => {
-    const states = mockFormData.states[country] || [];
-    console.log(`[WORKDAY-STATES] Found ${states.length} states for ${country}`);
+    const states = mockFormData.states[countryId] || [];
+    console.log(`[WORKDAY-STATES] Found ${states.length} states for ${countryId}`);
     if (states.length > 0) {
       console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
     }
