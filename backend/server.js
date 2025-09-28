@@ -990,7 +990,7 @@ app.post('/api/form-data/workday/departments', (req, res) => {
     // Return text and value to match real Workday format
     const departmentsWithHierarchy = mockFormData.departments.map(dept => ({
       text: dept.name,
-      value: dept.name,
+      value: dept.id,
       id: dept.id
     }));
     res.json(departmentsWithHierarchy);
@@ -1016,10 +1016,10 @@ app.post('/api/form-data/workday/states', (req, res) => {
         console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
       }
       // Return text and value to match real Workday format
-      // Make text and value the same for states (like real Workday)
+      // For states, value should be the ID (abbreviation) not the name
       const statesWithLeaf = states.map(state => ({
         text: state.name,
-        value: state.name,
+        value: state.id,
         id: state.id
       }));
       res.json(statesWithLeaf);
@@ -1037,12 +1037,12 @@ app.post('/api/form-data/workday/teams', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const teams = mockFormData.teams[deptId] || [];
-      // Return text and value to match real Workday format
-      const teamsWithLeaf = teams.map(team => ({
-        text: team.name,
-        value: team.name,
-        id: team.id
-      }));
+    // Return text and value to match real Workday format
+    const teamsWithLeaf = teams.map(team => ({
+      text: team.name,
+      value: team.id,
+      id: team.id
+    }));
     res.json(teamsWithLeaf);
   }, 400);
 });
