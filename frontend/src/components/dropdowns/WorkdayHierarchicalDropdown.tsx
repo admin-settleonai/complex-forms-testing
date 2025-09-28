@@ -10,6 +10,7 @@ interface WorkdayHierarchicalDropdownProps {
   value: string;
   onChange: (value: string) => void;
   dataAutomationId?: string;
+  goapplyId?: string; // Optional GoApply field ID for proper owner key attribution
   endpoints: {
     level1: string;
     level2: string;
@@ -37,6 +38,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   value,
   onChange,
   dataAutomationId,
+  goapplyId,
   endpoints,
   placeholder = 'Select...',
   disabled = false,
@@ -92,7 +94,8 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     
     // Ensure owner and context are set BEFORE making the request
     const w = window as any;
-    const ownerId = dataAutomationId || name;
+    // Use goapplyId if provided, otherwise fall back to dataAutomationId or name
+    const ownerId = goapplyId || dataAutomationId || name;
     
     // CRITICAL: Set owner key to ensure proper attribution
     w.__goapplyOwnerKey = ownerId;
@@ -191,7 +194,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     if (!disabled) {
       // Set context path BEFORE opening to ensure sniffer captures it correctly
       const w = window as any;
-      const ownerId = dataAutomationId || name;
+      const ownerId = goapplyId || dataAutomationId || name;
       
       if (!isOpen && w.__goapplyContextPathByOwner && ownerId) {
         // Opening dropdown - ensure context reflects current navigation state
@@ -222,7 +225,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     
     // Reset context path when going back
     const w = window as any;
-    const ownerId = dataAutomationId || name;
+        const ownerId = goapplyId || dataAutomationId || name;
     if (w.__goapplyContextPathByOwner && ownerId) {
       w.__goapplyContextPathByOwner[ownerId] = [];
       w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
@@ -242,7 +245,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         
         // CRITICAL: Set owner key for GoApply before navigation
         const w = window as any;
-        const ownerId = dataAutomationId || name;
+        const ownerId = goapplyId || dataAutomationId || name;
         if (w.__goapplyOwnerKey !== ownerId) {
           w.__goapplyOwnerKey = ownerId;
           console.log('[WorkdayHierarchical] Set owner key:', ownerId);
@@ -458,7 +461,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                       onMouseDown={(e) => {
                         // Ensure GoApply captures the owner before click
                         const w = window as any;
-                        w.__goapplyOwnerKey = dataAutomationId || name;
+                        w.__goapplyOwnerKey = goapplyId || dataAutomationId || name;
                         console.log('[WorkdayHierarchical] Option mousedown, set owner:', dataAutomationId || name);
                       }}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
