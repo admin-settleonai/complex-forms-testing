@@ -112,18 +112,20 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       
       if (navigation.level === 1) {
         // Load level 1 options (e.g., countries)
+        console.log('[WorkdayHierarchical] Loading countries from:', endpoints.level1);
         response = await api.post(endpoints.level1, {});
       } else {
         // Load level 2 options (e.g., states for selected country)
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
         
         // Send parent info in request body like real Workday
+        console.log('[WorkdayHierarchical] Loading states from:', endpoints.level2, 'with parent:', navigation.level1Value);
         response = await api.post(endpoints.level2, {
           parentValue: navigation.level1Value,
           parentLabel: navigation.level1Label,
           contextPath: [navigation.level1Label]
         });
-        console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length);
+        console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length, response.data);
       }
       
       setOptions(response.data);
