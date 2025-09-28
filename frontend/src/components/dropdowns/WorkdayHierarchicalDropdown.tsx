@@ -126,6 +126,16 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
 
   const handleToggle = () => {
     if (!disabled) {
+      // Reset context path when opening dropdown to ensure clean state
+      if (!isOpen) {
+        const w = window as any;
+        const ownerId = dataAutomationId || name;
+        if (w.__goapplyContextPathByOwner && ownerId) {
+          w.__goapplyContextPathByOwner[ownerId] = [];
+          w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+          w.__goapplyLevelByOwner[ownerId] = 0;
+        }
+      }
       setIsOpen(!isOpen);
       setSearchTerm('');
     }
@@ -135,6 +145,15 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     setNavigation({ level: 1 });
     onChange(''); // Clear the selection
     setSearchTerm('');
+    
+    // Reset context path when going back
+    const w = window as any;
+    const ownerId = dataAutomationId || name;
+    if (w.__goapplyContextPathByOwner && ownerId) {
+      w.__goapplyContextPathByOwner[ownerId] = [];
+      w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+      w.__goapplyLevelByOwner[ownerId] = 0;
+    }
   };
 
   const handleSelect = (option: Option) => {
@@ -160,6 +179,16 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         const button = buttonRef.current;
         if (button) {
           button.setAttribute('aria-label', option.name);
+        }
+        
+        // Update context path for GoApply sniffer
+        const w = window as any;
+        const ownerId = dataAutomationId || name;
+        if (w.__goapplyContextPathByOwner && ownerId) {
+          w.__goapplyContextPathByOwner[ownerId] = [option.name];
+          w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+          w.__goapplyLevelByOwner[ownerId] = 1;
+          console.log('[WorkdayHierarchical] Set context path:', ownerId, [option.name]);
         }
         
         // Trigger immediate load to ensure request fires
