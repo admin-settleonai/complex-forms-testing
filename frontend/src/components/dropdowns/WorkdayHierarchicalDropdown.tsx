@@ -111,8 +111,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
         
         // Include parent context in request body like real Workday
-        // CRITICAL: Add a small delay to ensure DOM updates are visible to sniffer
-        await new Promise(resolve => setTimeout(resolve, 50));
         
         // GoApply will track the request attribution
         
@@ -203,16 +201,9 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           button.setAttribute('aria-label', option.name);
         }
         
-        // Trigger immediate load to ensure request fires
-        // Context will be set in loadOptions before the request
-        setTimeout(() => {
-          try {
-            console.log('[WorkdayHierarchical] Forcing loadOptions for parent:', option.id);
-            loadOptions();
-          } catch (e) {
-            console.log('[WorkdayHierarchical] loadOptions error:', e);
-          }
-        }, 0);
+        // Load child options immediately
+        console.log('[WorkdayHierarchical] Loading child options for parent:', option.id);
+        loadOptions();
       } else {
         console.log('[WorkdayHierarchical] Option has no children, making final selection');
         // This is a leaf node - make the final selection
@@ -392,12 +383,6 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                     <button
                       type="button"
                       onClick={() => handleSelect(option)}
-                      onMouseDown={(e) => {
-                        // Ensure GoApply captures the owner before click
-                        const w = window as any;
-                        w.__goapplyOwnerKey = goapplyId || dataAutomationId || name;
-                        console.log('[WorkdayHierarchical] Option mousedown, set owner:', dataAutomationId || name);
-                      }}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
                       role="option"
                       data-automation-id="promptOption"
