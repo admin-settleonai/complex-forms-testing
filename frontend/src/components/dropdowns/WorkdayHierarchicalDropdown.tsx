@@ -161,6 +161,16 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         if (button) {
           button.setAttribute('aria-label', option.name);
         }
+        
+        // Trigger immediate load to ensure request fires
+        setTimeout(() => {
+          try {
+            console.log('[WorkdayHierarchical] Forcing loadOptions for parent:', option.id);
+            loadOptions();
+          } catch (e) {
+            console.log('[WorkdayHierarchical] loadOptions error:', e);
+          }
+        }, 0);
       } else {
         console.log('[WorkdayHierarchical] Option has no children, making final selection');
         // This is a leaf node - make the final selection
