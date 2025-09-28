@@ -237,6 +237,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       ref={dropdownRef}
       data-automation-id="multiSelectContainer"
       data-is-hierarchical="true"
+      data-goapply-id={dataAutomationId || name}
     >
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
@@ -255,6 +256,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         `}
         data-automation-id={dataAutomationId}
         data-uxi-widget-type="selectinput"
+        data-goapply-owner={dataAutomationId || name}
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
