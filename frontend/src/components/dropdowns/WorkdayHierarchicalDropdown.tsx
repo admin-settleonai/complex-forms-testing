@@ -118,6 +118,9 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
         
         // Include parent context in request body like real Workday
+        // CRITICAL: Add a small delay to ensure DOM updates are visible to sniffer
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
         response = await api.post(endpoints.level2, {
           parentValue: navigation.level1Value,
           parentLabel: navigation.level1Label,
@@ -201,6 +204,15 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       // Check if this option has children
       if (option.hasChildren) {
         console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
+        
+        // CRITICAL: Set owner key for GoApply before navigation
+        const w = window as any;
+        const ownerId = dataAutomationId || name;
+        if (w.__goapplyOwnerKey !== ownerId) {
+          w.__goapplyOwnerKey = ownerId;
+          console.log('[WorkdayHierarchical] Set owner key:', ownerId);
+        }
+        
         // Don't set value yet - just navigate to show children
         // This matches real Workday behavior
         setNavigation({
@@ -340,7 +352,13 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg" role="listbox" aria-label={`${label} options`} id={`${name}-listbox`}>
+        <div 
+          className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg" 
+          role="listbox" 
+          aria-label={`${label} options`} 
+          id={`${name}-listbox`}
+          data-dropdown-level={navigation.level.toString()}
+          data-parent-context={navigation.level1Label || ''}>
           {/* Search input */}
           <div className="p-2 border-b border-gray-200">
             <input
@@ -376,6 +394,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                 </svg>
                 Back to {navigation.level === 2 ? 'Countries' : 'Previous'}
               </button>
+              {navigation.level1Label && (
+                <div className="px-3 py-1 text-xs text-gray-600">
+                  Showing options for: <strong>{navigation.level1Label}</strong>
+                </div>
+              )}
             </div>
           )}
 
