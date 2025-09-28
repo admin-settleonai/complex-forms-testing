@@ -969,11 +969,10 @@ app.post('/api/form-data/workday/countries', (req, res) => {
   // Simulate network delay like real Workday
   // Return data quickly - GoApply should handle synchronization
   setTimeout(() => {
-    // Return text and value to match real Workday format
+    // Return label and value to match real Workday format
     const countriesWithHierarchy = mockFormData.countries.map(country => ({
-      text: country.name,
       value: country.id,  // Keep country codes as values
-      id: country.id
+      label: country.name
     }));
     
     // Debug: Log a sample to see what we're sending
@@ -987,11 +986,10 @@ app.post('/api/form-data/workday/countries', (req, res) => {
 app.post('/api/form-data/workday/departments', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
-    // Return text and value to match real Workday format
+    // Return label and value to match real Workday format
     const departmentsWithHierarchy = mockFormData.departments.map(dept => ({
-      text: dept.name,
-      value: dept.id,
-      id: dept.id
+      value: dept.name,
+      label: dept.name
     }));
     res.json(departmentsWithHierarchy);
   }, 400);
@@ -1015,12 +1013,10 @@ app.post('/api/form-data/workday/states', (req, res) => {
       if (states.length > 0) {
         console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
       }
-      // Return text and value to match real Workday format
-      // For states, value should be the ID (abbreviation) not the name
+      // Return label and value to match real Workday format
       const statesWithLeaf = states.map(state => ({
-        text: state.name,
-        value: state.id,
-        id: state.id
+        value: state.name,
+        label: state.name
       }));
       res.json(statesWithLeaf);
     }, 100); // Minimal delay for realistic network simulation
@@ -1037,11 +1033,10 @@ app.post('/api/form-data/workday/teams', (req, res) => {
   // Simulate network delay like real Workday
   setTimeout(() => {
     const teams = mockFormData.teams[deptId] || [];
-    // Return text and value to match real Workday format
+    // Return label and value to match real Workday format
     const teamsWithLeaf = teams.map(team => ({
-      text: team.name,
-      value: team.id,
-      id: team.id
+      value: team.name,
+      label: team.name
     }));
     res.json(teamsWithLeaf);
   }, 400);

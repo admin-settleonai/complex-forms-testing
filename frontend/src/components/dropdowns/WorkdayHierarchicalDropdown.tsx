@@ -20,10 +20,12 @@ interface WorkdayHierarchicalDropdownProps {
 }
 
 interface Option {
-  id: string;
+  id?: string;
   name?: string;
   text?: string;
-  value?: string;
+  value: string;
+  label?: string;
+  hasChildren?: boolean;
 }
 
 interface NavigationState {
@@ -197,7 +199,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       
       // Check if this option has children based on hierarchical structure
       // For countries, US, CA, and AU have states
-      const hasChildren = navigation.level === 1 && ['US', 'CA', 'AU'].includes(option.id);
+      const hasChildren = option.hasChildren || (navigation.level === 1 && (option.id || option.value) && ['US', 'CA', 'AU'].includes(option.id || option.value));
       
       if (hasChildren) {
         console.log('[WorkdayHierarchical] Option has children, navigating to level 2');
@@ -206,8 +208,8 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // This matches real Workday behavior
         setNavigation({
           level: 2,
-          level1Value: option.id,
-          level1Label: option.text || option.name || ''
+          level1Value: option.value || option.id,
+          level1Label: option.label || option.text || option.name || ''
         });
         setSearchTerm('');
         // Keep dropdown open for child selection
@@ -215,7 +217,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // Update button display to show current navigation
         const button = buttonRef.current;
         if (button) {
-          button.setAttribute('aria-label', option.text || option.name || '');
+          button.setAttribute('aria-label', option.label || option.text || option.name || '');
         }
         
         // Child options will be loaded by useEffect when navigation changes
@@ -228,7 +230,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // Trigger a DOM event that GoApply can detect
         const button = buttonRef.current;
         if (button) {
-          button.setAttribute('aria-label', option.text || option.name || '');
+          button.setAttribute('aria-label', option.label || option.text || option.name || '');
           button.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
@@ -244,7 +246,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       // Trigger DOM event
       const button = buttonRef.current;
       if (button) {
-        button.setAttribute('aria-label', `${navigation.level1Label} > ${option.text || option.name || ''}`);
+        button.setAttribute('aria-label', `${navigation.level1Label} > ${option.label || option.text || option.name || ''}`);
         button.dispatchEvent(new Event('change', { bubbles: true }));
       }
       
@@ -277,7 +279,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   };
 
   const filteredOptions = options.filter(option =>
-    (option.text || option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (option.label || option.text || option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -402,11 +404,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
                       role="option"
                       data-automation-id="promptOption"
-                      data-automation-label={option.text || option.name || ''}
+                      data-automation-label={option.label || option.text || option.name || ''}
                       aria-selected={false}
                     >
-                      <span>{option.text || option.name || option.value || ''}</span>
-                      {navigation.level === 1 && ['US', 'CA', 'AU'].includes(option.id) && (
+                      <span>{option.label || option.text || option.name || option.value || ''}</span>
+                      {(option.hasChildren || (navigation.level === 1 && option.id && ['US', 'CA', 'AU'].includes(option.id))) && (
                         <svg
                           className="w-4 h-4 text-gray-400 group-hover:text-gray-600"
                           xmlns="http://www.w3.org/2000/svg"
