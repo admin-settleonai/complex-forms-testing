@@ -278,7 +278,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg" role="listbox" aria-label={`${label} options`}>
           {/* Search input */}
           <div className="p-2 border-b border-gray-200">
             <input
@@ -336,6 +336,10 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                       type="button"
                       onClick={() => handleSelect(option)}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
+                      role="option"
+                      data-automation-id="promptOption"
+                      data-automation-label={option.name}
+                      aria-selected={false}
                     >
                       <span>{option.name}</span>
                       {navigation.level === 1 && option.hasChildren && (
