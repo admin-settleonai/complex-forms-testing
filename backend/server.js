@@ -967,6 +967,7 @@ app.get('/api/forms/submissions/:id', authenticateToken, (req, res) => {
 // Workday-style endpoints (no URL parameters, using POST body)
 app.post('/api/form-data/workday/countries', (req, res) => {
   // Simulate network delay like real Workday
+  // Return data quickly - GoApply should handle synchronization
   setTimeout(() => {
     // Return only id, name, and hasChildren to match Workday format
     const countriesWithHierarchy = mockFormData.countries.map(country => ({
@@ -980,7 +981,7 @@ app.post('/api/form-data/workday/countries', (req, res) => {
     console.log('[WORKDAY] US country:', countriesWithHierarchy.find(c => c.id === 'US'));
     
     res.json(countriesWithHierarchy);
-  }, 300);
+  }, 100); // Minimal delay for realistic network simulation
 });
 
 app.post('/api/form-data/workday/departments', (req, res) => {
@@ -1007,21 +1008,21 @@ app.post('/api/form-data/workday/states', (req, res) => {
     return res.status(400).json({ error: 'Country is required' });
   }
   
-  // Simulate network delay like real Workday
-  setTimeout(() => {
-    const states = mockFormData.states[countryId] || [];
-    console.log(`[WORKDAY-STATES] Found ${states.length} states for ${countryId}`);
-    if (states.length > 0) {
-      console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
-    }
-    // Return only id, name, and hasChildren to match Workday format
-    const statesWithLeaf = states.map(state => ({
-      id: state.id,
-      name: state.name,
-      hasChildren: false
-    }));
-    res.json(statesWithLeaf);
-  }, 300);
+    // Return data quickly - GoApply should handle synchronization
+    setTimeout(() => {
+      const states = mockFormData.states[countryId] || [];
+      console.log(`[WORKDAY-STATES] Found ${states.length} states for ${countryId}`);
+      if (states.length > 0) {
+        console.log('[WORKDAY-STATES] Sample states:', states.slice(0, 3));
+      }
+      // Return only id, name, and hasChildren to match Workday format
+      const statesWithLeaf = states.map(state => ({
+        id: state.id,
+        name: state.name,
+        hasChildren: false
+      }));
+      res.json(statesWithLeaf);
+    }, 100); // Minimal delay for realistic network simulation
 });
 
 app.post('/api/form-data/workday/teams', (req, res) => {

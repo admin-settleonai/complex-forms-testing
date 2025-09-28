@@ -199,7 +199,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           button.setAttribute('aria-label', option.name);
         }
         
-        // Load child options immediately
+        // Load child options immediately - GoApply should handle synchronization
         console.log('[WorkdayHierarchical] Loading child options for parent:', option.id);
         loadOptions();
       } else {
