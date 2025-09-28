@@ -116,8 +116,12 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       } else {
         // Load level 2 options (e.g., states for selected country)
         console.log('[WorkdayHierarchical] Loading level 2 options for parent:', navigation.level1Value);
+        
+        // Include parent context in request body like real Workday
         response = await api.post(endpoints.level2, {
-          parentValue: navigation.level1Value
+          parentValue: navigation.level1Value,
+          parentLabel: navigation.level1Label,
+          contextPath: [navigation.level1Label] // Match Workday's structure
         });
         console.log('[WorkdayHierarchical] Loaded level 2 options:', response.data.length);
       }
@@ -309,6 +313,9 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         data-automation-id={dataAutomationId}
         data-uxi-widget-type="selectinput"
         data-goapply-owner={dataAutomationId || name}
+        data-hierarchy-level={navigation.level.toString()}
+        data-parent-value={navigation.level1Value || ''}
+        data-parent-label={navigation.level1Label || ''}
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
