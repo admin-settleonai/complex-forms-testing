@@ -21,9 +21,8 @@ interface WorkdayHierarchicalDropdownProps {
 
 interface Option {
   id: string;
-  name?: string;
-  text?: string;
-  value?: string;
+  text: string;
+  value: string;
 }
 
 interface NavigationState {
@@ -207,7 +206,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         setNavigation({
           level: 2,
           level1Value: option.id,
-          level1Label: option.text || option.name || ''
+          level1Label: option.text
         });
         setSearchTerm('');
         // Keep dropdown open for child selection
@@ -215,7 +214,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // Update button display to show current navigation
         const button = buttonRef.current;
         if (button) {
-          button.setAttribute('aria-label', option.text || option.name || '');
+          button.setAttribute('aria-label', option.text);
         }
         
         // Child options will be loaded by useEffect when navigation changes
@@ -228,7 +227,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // Trigger a DOM event that GoApply can detect
         const button = buttonRef.current;
         if (button) {
-          button.setAttribute('aria-label', option.text || option.name || '');
+          button.setAttribute('aria-label', option.text);
           button.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
@@ -244,7 +243,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       // Trigger DOM event
       const button = buttonRef.current;
       if (button) {
-        button.setAttribute('aria-label', `${navigation.level1Label} > ${option.text || option.name || ''}`);
+        button.setAttribute('aria-label', `${navigation.level1Label} > ${option.text}`);
         button.dispatchEvent(new Event('change', { bubbles: true }));
       }
       
@@ -273,11 +272,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     
     // Single value (just country)
     const country = options.find(opt => opt.id === value);
-    return country ? (country.text || country.name || '') : value;
+    return country ? country.text : value;
   };
 
   const filteredOptions = options.filter(option =>
-    (option.text || option.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    option.text.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -402,10 +401,10 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between group"
                       role="option"
                       data-automation-id="promptOption"
-                      data-automation-label={option.text || option.name || ''}
+                      data-automation-label={option.text}
                       aria-selected={false}
                     >
-                      <span>{option.text || option.name || option.value || ''}</span>
+                      <span>{option.text}</span>
                       {navigation.level === 1 && ['US', 'CA', 'AU'].includes(option.id) && (
                         <svg
                           className="w-4 h-4 text-gray-400 group-hover:text-gray-600"
