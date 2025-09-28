@@ -193,10 +193,10 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       
       // Check if this option has children
       if (option.hasChildren) {
-        console.log('[WorkdayHierarchical] Option has children, marking as selected but staying at level 1');
+        console.log('[WorkdayHierarchical] Option has children, selecting parent but staying at level 1');
         
-        // In real Workday, selecting a parent doesn't automatically drill in
-        // It just marks it as selected and shows a visual indicator
+        // Real Workday DOES trigger the selection, but backend knows it's hierarchical
+        onChange(option.id);
         setSelectedLevel1(option);
         setSearchTerm('');
         
@@ -204,6 +204,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         const button = buttonRef.current;
         if (button) {
           button.setAttribute('aria-label', option.name);
+          button.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
         // Keep dropdown open but stay at level 1
