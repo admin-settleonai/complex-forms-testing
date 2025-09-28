@@ -86,6 +86,27 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   // Load options based on current navigation level
   const loadOptions = async () => {
     setLoading(true);
+    
+    // Ensure context is set BEFORE making the request
+    const w = window as any;
+    const ownerId = dataAutomationId || name;
+    
+    if (w.__goapplyContextPathByOwner && ownerId) {
+      if (navigation.level === 2 && navigation.level1Label) {
+        // Loading children - set parent context
+        w.__goapplyContextPathByOwner[ownerId] = [navigation.level1Label];
+        w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+        w.__goapplyLevelByOwner[ownerId] = 1;
+        console.log('[WorkdayHierarchical] Set context before load:', ownerId, [navigation.level1Label]);
+      } else {
+        // Loading root - clear context
+        w.__goapplyContextPathByOwner[ownerId] = [];
+        w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+        w.__goapplyLevelByOwner[ownerId] = 0;
+        console.log('[WorkdayHierarchical] Clear context before load:', ownerId, []);
+      }
+    }
+    
     try {
       let response;
       
@@ -126,16 +147,27 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
 
   const handleToggle = () => {
     if (!disabled) {
-      // Reset context path when opening dropdown to ensure clean state
-      if (!isOpen) {
-        const w = window as any;
-        const ownerId = dataAutomationId || name;
-        if (w.__goapplyContextPathByOwner && ownerId) {
+      // Set context path BEFORE opening to ensure sniffer captures it correctly
+      const w = window as any;
+      const ownerId = dataAutomationId || name;
+      
+      if (!isOpen && w.__goapplyContextPathByOwner && ownerId) {
+        // Opening dropdown - ensure context reflects current navigation state
+        if (navigation.level === 2 && navigation.level1Label) {
+          // We're at level 2, set context to parent
+          w.__goapplyContextPathByOwner[ownerId] = [navigation.level1Label];
+          w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
+          w.__goapplyLevelByOwner[ownerId] = 1;
+          console.log('[WorkdayHierarchical] Set context on open:', ownerId, [navigation.level1Label]);
+        } else {
+          // We're at root level
           w.__goapplyContextPathByOwner[ownerId] = [];
           w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
           w.__goapplyLevelByOwner[ownerId] = 0;
+          console.log('[WorkdayHierarchical] Reset context on open:', ownerId, []);
         }
       }
+      
       setIsOpen(!isOpen);
       setSearchTerm('');
     }
@@ -181,17 +213,8 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           button.setAttribute('aria-label', option.name);
         }
         
-        // Update context path for GoApply sniffer
-        const w = window as any;
-        const ownerId = dataAutomationId || name;
-        if (w.__goapplyContextPathByOwner && ownerId) {
-          w.__goapplyContextPathByOwner[ownerId] = [option.name];
-          w.__goapplyLevelByOwner = w.__goapplyLevelByOwner || {};
-          w.__goapplyLevelByOwner[ownerId] = 1;
-          console.log('[WorkdayHierarchical] Set context path:', ownerId, [option.name]);
-        }
-        
         // Trigger immediate load to ensure request fires
+        // Context will be set in loadOptions before the request
         setTimeout(() => {
           try {
             console.log('[WorkdayHierarchical] Forcing loadOptions for parent:', option.id);
