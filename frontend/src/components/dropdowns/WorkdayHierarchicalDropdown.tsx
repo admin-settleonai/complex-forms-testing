@@ -306,6 +306,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         data-hierarchy-level={navigation.level.toString()}
         data-parent-value={navigation.level1Value || ''}
         data-parent-label={navigation.level1Label || ''}
+        data-is-hierarchical="true"
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -336,7 +337,9 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           aria-label={`${label} options`} 
           id={`${name}-listbox`}
           data-dropdown-level={navigation.level.toString()}
-          data-parent-context={navigation.level1Label || ''}>
+          data-parent-context={navigation.level1Label || ''}
+          data-is-hierarchical="true"
+          data-hierarchical-structure="true">
           {/* Search input */}
           <div className="p-2 border-b border-gray-200">
             <input
@@ -402,6 +405,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
                       role="option"
                       data-automation-id="promptOption"
                       data-automation-label={option.text}
+                      data-has-children={navigation.level === 1 && ['US', 'CA', 'AU'].includes(option.id) ? "true" : "false"}
                       aria-selected={false}
                     >
                       <span>{option.text}</span>
