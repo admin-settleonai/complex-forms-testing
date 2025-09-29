@@ -315,7 +315,7 @@ const WorkdayStyleFormPage: React.FC = () => {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Single set of fields */}
+          {/* Single set of fields - Updated to remove duplicate forms */}
           {renderFieldGroup('1')}
 
           {/* Submit Button */}
