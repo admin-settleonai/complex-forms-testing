@@ -261,7 +261,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       if (navigation.level === 2) {
         const selected = options.find(opt => opt.id === parts[1]);
         if (selected) {
-          return `${navigation.level1Label} > ${selected.name}`;
+          return `${navigation.level1Label} > ${selected.text}`;
         }
       }
       return value;
