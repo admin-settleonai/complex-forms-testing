@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkdayDropdown from '../components/dropdowns/WorkdayDropdown';
@@ -49,6 +49,7 @@ interface FormData {
 const WorkdayStyleFormPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState<FormData>({
     sourceType: '',
     referralSource: '',
@@ -77,6 +78,67 @@ const WorkdayStyleFormPage: React.FC = () => {
     departmentTeam1: '',
     departmentTeam2: ''
   });
+
+  // Listen for external value changes (from GoApply prefilling)
+  useEffect(() => {
+    if (!formRef.current) return;
+
+    const handleExternalChange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      if (!target.name) return;
+
+      const fieldName = target.name as keyof FormData;
+      let value: any = target.value;
+
+      // Handle checkboxes
+      if (target.type === 'checkbox') {
+        value = target.checked;
+      }
+
+      // Update React state if value differs from current state
+      setFormData(prev => {
+        if (prev[fieldName] !== value) {
+          console.log(`[WorkdayForm] External change detected: ${fieldName} = ${value}`);
+          return { ...prev, [fieldName]: value };
+        }
+        return prev;
+      });
+    };
+
+    // Listen for input and change events on all form inputs
+    const inputs = formRef.current.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      input.addEventListener('input', handleExternalChange);
+      input.addEventListener('change', handleExternalChange);
+    });
+
+    // Also use MutationObserver to detect direct value changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+          const target = mutation.target as HTMLInputElement;
+          if (target.name) {
+            handleExternalChange(new Event('change', { target: target as any }));
+          }
+        }
+      });
+    });
+
+    inputs.forEach(input => {
+      observer.observe(input, { 
+        attributes: true, 
+        attributeFilter: ['value', 'checked'] 
+      });
+    });
+
+    return () => {
+      inputs.forEach(input => {
+        input.removeEventListener('input', handleExternalChange);
+        input.removeEventListener('change', handleExternalChange);
+      });
+      observer.disconnect();
+    };
+  }, []);
   
   // No need to manage states, teams, etc. locally - WorkdayDropdown handles them
   // Hierarchical dropdowns now handle their own state internally
@@ -314,7 +376,7 @@ const WorkdayStyleFormPage: React.FC = () => {
           This form demonstrates Workday-style patterns with dynamic dropdowns, hierarchical fields, and ARIA attributes.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
           {/* Single set of fields - Updated to remove duplicate forms */}
           {renderFieldGroup('1')}
 

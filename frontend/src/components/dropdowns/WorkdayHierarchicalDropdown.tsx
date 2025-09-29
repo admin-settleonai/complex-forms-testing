@@ -51,6 +51,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   // Parse the value to determine current state
   useEffect(() => {
@@ -86,6 +87,44 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       loadOptions();
     }
   }, [navigation.level, isOpen]);
+
+  // Listen for external changes to the hidden input (from GoApply)
+  useEffect(() => {
+    if (!hiddenInputRef.current) return;
+
+    const handleExternalChange = () => {
+      const newValue = hiddenInputRef.current?.value || '';
+      if (newValue !== value) {
+        console.log(`[WorkdayHierarchical] External change detected: ${name} = ${newValue}`);
+        onChange(newValue);
+      }
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+          handleExternalChange();
+        }
+      });
+    });
+
+    observer.observe(hiddenInputRef.current, { 
+      attributes: true, 
+      attributeFilter: ['value'] 
+    });
+
+    // Also listen for programmatic value changes
+    hiddenInputRef.current.addEventListener('input', handleExternalChange);
+    hiddenInputRef.current.addEventListener('change', handleExternalChange);
+
+    return () => {
+      observer.disconnect();
+      if (hiddenInputRef.current) {
+        hiddenInputRef.current.removeEventListener('input', handleExternalChange);
+        hiddenInputRef.current.removeEventListener('change', handleExternalChange);
+      }
+    };
+  }, [value, onChange, name]);
 
   // Load options based on current navigation level
   const loadOptions = async () => {
@@ -292,6 +331,15 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
+      
+      {/* Hidden input for GoApply to target */}
+      <input
+        ref={hiddenInputRef}
+        type="hidden"
+        name={name}
+        value={value}
+        data-automation-id={dataAutomationId}
+      />
       
       <button
         ref={buttonRef}

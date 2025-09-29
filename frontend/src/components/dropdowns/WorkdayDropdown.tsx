@@ -32,6 +32,7 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -51,6 +52,44 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
       loadOptions();
     }
   }, [isOpen, parentValue]);
+
+  // Listen for external changes to the hidden input (from GoApply)
+  useEffect(() => {
+    if (!hiddenInputRef.current) return;
+
+    const handleExternalChange = () => {
+      const newValue = hiddenInputRef.current?.value || '';
+      if (newValue !== value) {
+        console.log(`[WorkdayDropdown] External change detected: ${name} = ${newValue}`);
+        onChange(newValue);
+      }
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+          handleExternalChange();
+        }
+      });
+    });
+
+    observer.observe(hiddenInputRef.current, { 
+      attributes: true, 
+      attributeFilter: ['value'] 
+    });
+
+    // Also listen for programmatic value changes
+    hiddenInputRef.current.addEventListener('input', handleExternalChange);
+    hiddenInputRef.current.addEventListener('change', handleExternalChange);
+
+    return () => {
+      observer.disconnect();
+      if (hiddenInputRef.current) {
+        hiddenInputRef.current.removeEventListener('input', handleExternalChange);
+        hiddenInputRef.current.removeEventListener('change', handleExternalChange);
+      }
+    };
+  }, [value, onChange, name]);
 
   const loadOptions = async () => {
     setLoading(true);
@@ -85,6 +124,15 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
+      
+      {/* Hidden input for GoApply to target */}
+      <input
+        ref={hiddenInputRef}
+        type="hidden"
+        name={name}
+        value={value}
+        data-automation-id={dataAutomationId}
+      />
       
       <button
         ref={buttonRef}
