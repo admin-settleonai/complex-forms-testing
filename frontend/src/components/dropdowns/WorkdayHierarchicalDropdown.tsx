@@ -29,6 +29,7 @@ interface NavigationState {
   level: 1 | 2;
   level1Value?: string;
   level1Label?: string;
+  level1Id?: string;  // Store the ID for API calls
 }
 
 const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = ({
@@ -123,6 +124,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
           body: JSON.stringify({
             parentValue: navigation.level1Value,
             parentLabel: navigation.level1Label,
+            parentId: navigation.level1Id, // Send the ID for backend
             parent: navigation.level1Label, // Alternative key
             contextPath: [navigation.level1Label], // Match Workday's structure
             level: 1 // Explicit level indicator
@@ -154,7 +156,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         loadOptions();
       }
     }
-  }, [isOpen, navigation.level, navigation.level1Value]);
+  }, [isOpen, navigation.level, navigation.level1Value, navigation.level1Id]);
 
   // Focus search input when dropdown opens
   useEffect(() => {
@@ -205,8 +207,9 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         // This matches real Workday behavior
         setNavigation({
           level: 2,
-          level1Value: option.id,
-          level1Label: option.text
+          level1Value: option.value,
+          level1Label: option.text,
+          level1Id: option.id  // Store ID for API calls
         });
         setSearchTerm('');
         // Keep dropdown open for child selection
@@ -218,11 +221,11 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         }
         
         // Child options will be loaded by useEffect when navigation changes
-        console.log('[WorkdayHierarchical] Navigation updated, useEffect will load child options for:', option.id);
+        console.log('[WorkdayHierarchical] Navigation updated, useEffect will load child options for:', option.value);
       } else {
         console.log('[WorkdayHierarchical] Option has no children, making final selection');
         // This is a leaf node - make the final selection
-        onChange(option.id);
+        onChange(option.value);
         
         // Trigger a DOM event that GoApply can detect
         const button = buttonRef.current;
@@ -237,7 +240,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       }
     } else {
       // Selected a level 2 item, complete the selection
-      const fullValue = `${navigation.level1Value}|${option.id}`;
+      const fullValue = `${navigation.level1Value}|${option.value}`;
       onChange(fullValue);
       
       // Trigger DOM event
@@ -397,7 +400,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
             ) : (
               <ul className="py-1">
                 {filteredOptions.map((option) => (
-                  <li key={option.id}>
+                  <li key={option.value}>
                     <button
                       type="button"
                       onClick={() => handleSelect(option)}

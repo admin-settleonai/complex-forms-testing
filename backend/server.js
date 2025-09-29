@@ -970,10 +970,10 @@ app.post('/api/form-data/workday/countries', (req, res) => {
   // Return data quickly - GoApply should handle synchronization
   setTimeout(() => {
     // Return text and value to match real Workday format
-    // For countries, text=name but value=id (e.g. text="United States", value="US")
+    // IMPORTANT: text and value MUST be the same!
     const countriesWithHierarchy = mockFormData.countries.map(country => ({
       text: country.name,
-      value: country.name,  // Make text and value the same
+      value: country.name,  // Text and value MUST match
       id: country.id
     }));
     
@@ -999,10 +999,24 @@ app.post('/api/form-data/workday/departments', (req, res) => {
 });
 
 app.post('/api/form-data/workday/states', (req, res) => {
-  const { country, parentValue } = req.body;
-  const countryId = country || parentValue;
+  const { country, parentValue, parentId } = req.body;
   
   console.log('[WORKDAY-STATES] Request body:', req.body);
+  
+  // Map country name to ID if needed
+  let countryId = parentId || country || parentValue;
+  
+  // If we got a country name instead of ID, map it
+  const countryNameToId = {
+    'United States': 'US',
+    'Canada': 'CA',
+    'Australia': 'AU'
+  };
+  
+  if (countryNameToId[countryId]) {
+    countryId = countryNameToId[countryId];
+  }
+  
   console.log('[WORKDAY-STATES] Country ID:', countryId);
   
   if (!countryId) {
