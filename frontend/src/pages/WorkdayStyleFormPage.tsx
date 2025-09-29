@@ -121,7 +121,7 @@ const WorkdayStyleFormPage: React.FC = () => {
     
     return (
       <div className="space-y-6 border-l-4 border-blue-500 pl-6">
-        <h3 className="text-lg font-semibold text-gray-900">Set {suffix}</h3>
+        {/* Removed the Set heading since we only have one form now */}
         
         {/* Personal Information */}
         <div className="grid grid-cols-2 gap-4">
@@ -315,82 +315,8 @@ const WorkdayStyleFormPage: React.FC = () => {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Source Selection - Radio Group */}
-          <div>
-            <fieldset>
-              <legend className="text-lg font-medium text-gray-900 mb-4">How did you hear about us?</legend>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="source-website"
-                    name="sourceType"
-                    value="website"
-                    data-automation-id="source--type--website"
-                    checked={formData.sourceType === 'website'}
-                    onChange={(e) => handleChange('sourceType', e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <label htmlFor="source-website" className="ml-2 block text-sm text-gray-900">
-                    Company Website
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="source-referral"
-                    name="sourceType"
-                    value="referral"
-                    data-automation-id="source--type--referral"
-                    checked={formData.sourceType === 'referral'}
-                    onChange={(e) => handleChange('sourceType', e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <label htmlFor="source-referral" className="ml-2 block text-sm text-gray-900">
-                    Employee Referral
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="source-job-board"
-                    name="sourceType"
-                    value="job-board"
-                    data-automation-id="source--type--jobBoard"
-                    checked={formData.sourceType === 'job-board'}
-                    onChange={(e) => handleChange('sourceType', e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <label htmlFor="source-job-board" className="ml-2 block text-sm text-gray-900">
-                    Job Board
-                  </label>
-                </div>
-              </div>
-            </fieldset>
-
-            {/* Conditional field based on referral selection */}
-            {formData.sourceType === 'referral' && (
-              <div className="mt-4">
-                <label htmlFor="referralSource" className="block text-sm font-medium text-gray-700">
-                  Employee Name (Referral)
-                </label>
-                <input
-                  type="text"
-                  id="referralSource"
-                  name="referralSource"
-                  data-automation-id="source--referralName"
-                  value={String(formData.referralSource || '')}
-                  onChange={(e) => handleChange('referralSource', e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="Enter employee name"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Two sets of fields to demonstrate multiple instances */}
+          {/* Single set of fields */}
           {renderFieldGroup('1')}
-          {renderFieldGroup('2')}
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-4">
