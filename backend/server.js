@@ -496,7 +496,9 @@ const loadCountriesFromFile = () => {
     countriesCache = list
       .map((c) => ({
         id: c.id,
-        name: c.name,
+        text: c.name,
+        value: c.name,  // TEXT AND VALUE MUST MATCH!
+        name: c.name,   // Keep for backward compatibility
         hasStates: fs.existsSync(path.join(statesDir, `${c.id}.json`))
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -523,7 +525,13 @@ app.get('/api/form-data/states/:countryId', (req, res) => {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, 'utf8');
       const list = JSON.parse(raw);
-      setTimeout(() => res.json(list), 300);
+      // Ensure text and value match
+      const formattedList = list.map(state => ({
+        id: state.id || state.code,
+        text: state.name,
+        value: state.name  // TEXT AND VALUE MUST MATCH!
+      }));
+      setTimeout(() => res.json(formattedList), 300);
     } else {
       setTimeout(() => res.json([]), 300);
     }
@@ -535,14 +543,27 @@ app.get('/api/form-data/states/:countryId', (req, res) => {
 
 app.get('/api/form-data/departments', (req, res) => {
   setTimeout(() => {
-    res.json(mockFormData.departments);
+    // Ensure text and value match
+    const formattedDepts = mockFormData.departments.map(dept => ({
+      id: dept.id,
+      text: dept.name,
+      value: dept.name  // TEXT AND VALUE MUST MATCH!
+    }));
+    res.json(formattedDepts);
   }, 400);
 });
 
 app.get('/api/form-data/teams/:departmentId', (req, res) => {
   const { departmentId } = req.params;
   setTimeout(() => {
-    res.json(mockFormData.teams[departmentId] || []);
+    const teams = mockFormData.teams[departmentId] || [];
+    // Ensure text and value match
+    const formattedTeams = teams.map(team => ({
+      id: team.id,
+      text: team.name,
+      value: team.name  // TEXT AND VALUE MUST MATCH!
+    }));
+    res.json(formattedTeams);
   }, 600);
 });
 
