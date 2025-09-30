@@ -93,7 +93,7 @@ const WorkdayStyleFormPage: React.FC = () => {
       let value: any = target.value;
 
       // Handle checkboxes
-      if (target.type === "checkbox") {
+      if (target instanceof HTMLInputElement && target.type === "checkbox") {
         value = target.checked;
       }
 
