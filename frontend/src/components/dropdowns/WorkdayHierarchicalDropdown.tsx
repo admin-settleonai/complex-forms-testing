@@ -381,7 +381,9 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
         <div 
           className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg" 
           role="listbox" 
+          data-automation-id="promptWithResults"
           aria-label={`${label} options`} 
+          aria-labelledby={name}
           id={`${name}-listbox`}
           data-dropdown-level={navigation.level.toString()}
           data-parent-context={navigation.level1Label || ''}

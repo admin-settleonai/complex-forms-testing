@@ -134,9 +134,7 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
         data-automation-id={dataAutomationId}
         data-selected-value={value}
         data-selected-text={selectedOption?.name || ''}
-        data-wait-for-options={endpoint ? "true" : "false"}
-        data-is-dynamic={endpoint ? "true" : "false"}
-        data-is-searchable={endpoint ? "false" : "false"}
+        role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         disabled={disabled}
@@ -171,6 +169,9 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
         <div
           className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none"
           role="listbox"
+          data-automation-id="promptWithResults"
+          id={`${name}-listbox`}
+          aria-labelledby={name}
         >
           {/* Search input for searchable dropdowns */}
           <div className="px-3 py-2 border-b border-gray-200">
@@ -198,6 +199,8 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
                   ${value === option.id ? 'text-white bg-blue-600' : 'text-gray-900 hover:bg-gray-100'}
                 `}
                 role="option"
+                data-automation-id="promptOption"
+                data-automation-label={option.name}
                 aria-selected={value === option.id}
               >
                 <span className={`block truncate ${value === option.id ? 'font-semibold' : 'font-normal'}`}>
