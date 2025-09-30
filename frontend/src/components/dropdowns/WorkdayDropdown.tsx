@@ -134,6 +134,7 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
         data-automation-id={dataAutomationId}
         data-selected-value={value}
         data-selected-text={selectedOption?.name || ''}
+        data-uxi-widget-type="selectinput"
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
