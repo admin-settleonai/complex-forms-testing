@@ -50,6 +50,7 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
   const [navigation, setNavigation] = useState<NavigationState>({ level: 1 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Parse the value to determine current state
@@ -87,12 +88,12 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
     }
   }, [navigation.level, isOpen]);
 
-  // Listen for external changes to the button's data attributes (from GoApply)
+  // Listen for external changes to the input element (from GoApply)
   useEffect(() => {
-    if (!buttonRef.current) return;
+    if (!inputRef.current) return;
 
     const handleExternalChange = () => {
-      const newValue = buttonRef.current?.getAttribute('data-selected-value') || '';
+      const newValue = inputRef.current?.value || '';
       if (newValue !== value) {
         console.log(`[WorkdayHierarchical] External change detected: ${name} = ${newValue}`);
         onChange(newValue);
@@ -101,29 +102,26 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach(mutation => {
-        if (mutation.type === 'attributes' && 
-            (mutation.attributeName === 'data-selected-value' || 
-             mutation.attributeName === 'data-selected-text')) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
           handleExternalChange();
         }
       });
     });
 
-    observer.observe(buttonRef.current, { 
+    observer.observe(inputRef.current, { 
       attributes: true, 
-      attributeFilter: ['data-selected-value', 'data-selected-text'] 
+      attributeFilter: ['value'] 
     });
 
-    // Also check for programmatic changes via custom event
-    const handleCustomChange = (e: Event) => {
-      handleExternalChange();
-    };
-    buttonRef.current.addEventListener('value-changed', handleCustomChange);
+    // Also listen for programmatic value changes
+    inputRef.current.addEventListener('input', handleExternalChange);
+    inputRef.current.addEventListener('change', handleExternalChange);
 
     return () => {
       observer.disconnect();
-      if (buttonRef.current) {
-        buttonRef.current.removeEventListener('value-changed', handleCustomChange);
+      if (inputRef.current) {
+        inputRef.current.removeEventListener('input', handleExternalChange);
+        inputRef.current.removeEventListener('change', handleExternalChange);
       }
     };
   }, [value, onChange, name]);
@@ -333,6 +331,19 @@ const WorkdayHierarchicalDropdown: React.FC<WorkdayHierarchicalDropdownProps> = 
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
+      
+      {/* Accessible input for GoApply discovery */}
+      <input
+        ref={inputRef}
+        type="text"
+        name={name}
+        id={name}
+        data-automation-id={dataAutomationId}
+        value={value}
+        onChange={() => {}} // Controlled by external updates
+        style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px' }}
+        tabIndex={-1}
+      />
       
       <button
         ref={buttonRef}
