@@ -32,7 +32,6 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -53,12 +52,12 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
     }
   }, [isOpen, parentValue]);
 
-  // Listen for external changes to the input element (from GoApply)
+  // Listen for external changes to the button's data attributes (from GoApply)
   useEffect(() => {
-    if (!inputRef.current) return;
+    if (!buttonRef.current) return;
 
     const handleExternalChange = () => {
-      const newValue = inputRef.current?.value || '';
+      const newValue = buttonRef.current?.getAttribute('data-selected-value') || '';
       if (newValue !== value) {
         console.log(`[WorkdayDropdown] External change detected: ${name} = ${newValue}`);
         onChange(newValue);
@@ -67,26 +66,29 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach(mutation => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+        if (mutation.type === 'attributes' && 
+            (mutation.attributeName === 'data-selected-value' || 
+             mutation.attributeName === 'data-selected-text')) {
           handleExternalChange();
         }
       });
     });
 
-    observer.observe(inputRef.current, { 
+    observer.observe(buttonRef.current, { 
       attributes: true, 
-      attributeFilter: ['value'] 
+      attributeFilter: ['data-selected-value', 'data-selected-text'] 
     });
 
-    // Also listen for programmatic value changes
-    inputRef.current.addEventListener('input', handleExternalChange);
-    inputRef.current.addEventListener('change', handleExternalChange);
+    // Also check for programmatic changes via custom event
+    const handleCustomChange = (e: Event) => {
+      handleExternalChange();
+    };
+    buttonRef.current.addEventListener('value-changed', handleCustomChange);
 
     return () => {
       observer.disconnect();
-      if (inputRef.current) {
-        inputRef.current.removeEventListener('input', handleExternalChange);
-        inputRef.current.removeEventListener('change', handleExternalChange);
+      if (buttonRef.current) {
+        buttonRef.current.removeEventListener('value-changed', handleCustomChange);
       }
     };
   }, [value, onChange, name]);
@@ -125,22 +127,10 @@ const WorkdayDropdown: React.FC<WorkdayDropdownProps> = ({
         {label}
       </label>
       
-      {/* Accessible input for GoApply discovery */}
-      <input
-        ref={inputRef}
-        type="text"
-        name={name}
-        id={name}
-        data-automation-id={dataAutomationId}
-        value={value}
-        onChange={() => {}} // Controlled by external updates
-        style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px' }}
-        tabIndex={-1}
-      />
-      
       <button
         ref={buttonRef}
         type="button"
+        name={name}
         data-automation-id={dataAutomationId}
         data-selected-value={value}
         data-selected-text={selectedOption?.name || ''}

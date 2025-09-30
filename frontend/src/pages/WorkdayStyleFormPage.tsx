@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkdayDropdown from '../components/dropdowns/WorkdayDropdown';
 import WorkdayHierarchicalDropdown from '../components/dropdowns/WorkdayHierarchicalDropdown';
+import { initializeGoApplyDiscovery } from '../utils/goapplyIntegration';
 
 interface FormData {
   // Source selection (radio group)
@@ -138,6 +139,16 @@ const WorkdayStyleFormPage: React.FC = () => {
       });
       observer.disconnect();
     };
+  }, []);
+  
+  // Initialize GoApply field discovery after component mounts
+  useEffect(() => {
+    // Small delay to ensure DOM is fully rendered
+    const timer = setTimeout(() => {
+      initializeGoApplyDiscovery();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
   
   // No need to manage states, teams, etc. locally - WorkdayDropdown handles them
