@@ -141,14 +141,10 @@ const WorkdayStyleFormPage: React.FC = () => {
     };
   }, []);
   
-  // Initialize GoApply field discovery after component mounts
+  // Initialize Workday-style behavior on mount
   useEffect(() => {
-    // Small delay to ensure DOM is fully rendered
-    const timer = setTimeout(() => {
-      initializeGoApplyDiscovery();
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    // Initialize immediately, just like Workday does
+    initializeGoApplyDiscovery();
   }, []);
   
   // No need to manage states, teams, etc. locally - WorkdayDropdown handles them

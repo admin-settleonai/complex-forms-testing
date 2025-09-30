@@ -11,91 +11,111 @@ declare global {
 }
 
 /**
- * Why Real Workday/Greenhouse Forms Work Without This:
+ * Make Test App Discovery Work Like Real Workday
  * 
- * 1. USER INTERACTION TIMING:
- *    - Real forms: Users click/focus fields BEFORE prefill happens
- *    - Test app: GoApply tries to prefill IMMEDIATELY on load
+ * How Workday ACTUALLY works:
+ * 1. Form loads with data-automation-id attributes on all fields
+ * 2. Workday auto-focuses the first text input on page load
+ * 3. Fields are already in the DOM with proper attributes
+ * 4. GoApply's instrumentation catches the initial focus event
+ * 5. Subsequent fields get discovered as user tabs/clicks through
  * 
- * 2. NATURAL EVENT FLOW in Real Apps:
- *    - User clicks "Apply" button → navigates to form
- *    - User clicks first field to start filling
- *    - Each interaction fires focusin/click events
- *    - GoApply discovers fields through these events
- *    - Prefill happens AFTER fields are already discovered
- * 
- * 3. WORKDAY'S OWN INITIALIZATION:
- *    - Workday forms often auto-focus the first field
- *    - They have field initialization that naturally fires events
- *    - Many fields load dynamically after user interaction
- * 
- * 4. TEST APP PROBLEM:
- *    - Form loads → GoApply tries prefill immediately
- *    - No user interaction yet = No events fired
- *    - No events = No field discovery = Prefill fails
- * 
- * This helper simulates the user interactions that would
- * normally happen in real form usage.
+ * The key: Workday doesn't fire events on ALL fields - just the first one!
+ * The rest get discovered naturally as the user progresses.
  */
 export function initializeGoApplyDiscovery() {
-  // Wait for DOM to be fully loaded
+  // Wait for DOM to be fully loaded, just like Workday
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeGoApplyDiscovery);
     return;
   }
 
-  console.log('[GoApply Integration] Initializing field discovery...');
-  console.log('[GoApply Integration] Note: Real Workday forms don\'t need this because users interact with fields before prefill');
+  console.log('[Test App] Initializing Workday-style form behavior...');
 
-  // Find all form inputs that need to be discovered
-  const fields = document.querySelectorAll(
-    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), ' +
-    'textarea, ' +
-    'select, ' +
-    'button[aria-haspopup], ' +
-    '[role="combobox"], ' +
-    '[data-automation-id]'
-  );
+  // Step 1: Ensure all fields have proper data-automation-id (like Workday)
+  const ensureAutomationIds = () => {
+    const fields = document.querySelectorAll(
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), ' +
+      'textarea, select, button[aria-haspopup]'
+    );
 
-  console.log(`[GoApply Integration] Found ${fields.length} fields to register`);
+    fields.forEach((field) => {
+      // Workday always has data-automation-id
+      if (!field.getAttribute('data-automation-id')) {
+        const name = field.getAttribute('name') || field.getAttribute('id') || '';
+        if (name) {
+          field.setAttribute('data-automation-id', name);
+        }
+      }
+    });
+  };
 
-  // Simulate user interactions that would normally happen
-  fields.forEach((field, index) => {
-    setTimeout(() => {
-      // Simulate user focusing on field (like clicking or tabbing to it)
-      const focusEvent = new FocusEvent('focusin', {
-        bubbles: true,
-        cancelable: true,
-        view: window
+  // Step 2: Auto-focus first field (exactly what Workday does)
+  const autoFocusFirstField = () => {
+    // Find the first visible text input, just like Workday
+    const firstField = document.querySelector(
+      'input[type="text"]:not([disabled]):not([readonly]), ' +
+      'input[type="email"]:not([disabled]):not([readonly]), ' +
+      'input:not([type]):not([disabled]):not([readonly])'
+    ) as HTMLInputElement;
+
+    if (firstField) {
+      console.log('[Test App] Auto-focusing first field (Workday behavior):', {
+        name: firstField.name,
+        id: firstField.id,
+        automationId: firstField.getAttribute('data-automation-id')
       });
-      
-      field.dispatchEvent(focusEvent);
-      
-      // Simulate user clicking on field
-      const clickEvent = new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        view: window
-      });
-      
-      field.dispatchEvent(clickEvent);
-      
-      console.log(`[GoApply Integration] Simulated user interaction for field ${index + 1}:`, {
-        tag: field.tagName,
-        name: field.getAttribute('name'),
-        id: field.getAttribute('id'),
-        automationId: field.getAttribute('data-automation-id')
-      });
-    }, index * 50); // Stagger to mimic natural user behavior
-  });
 
-  // After all fields are "interacted with", signal completion
-  setTimeout(() => {
-    window.dispatchEvent(new CustomEvent('goapply-fields-ready', {
-      detail: { fieldCount: fields.length }
-    }));
-    console.log('[GoApply Integration] Field discovery complete - GoApply can now prefill');
-  }, fields.length * 50 + 500);
+      // Use setTimeout to ensure it happens after all initialization
+      setTimeout(() => {
+        firstField.focus();
+        
+        // Workday also fires a click event on the focused field
+        firstField.click();
+      }, 100);
+    }
+  };
+
+  // Step 3: Set up MutationObserver for dynamic fields (Workday has this)
+  const observeDynamicFields = () => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === 1 && (node as Element).matches) {
+              const el = node as Element;
+              // Check if it's a form field
+              if (el.matches('input, select, textarea, button[aria-haspopup]')) {
+                // Ensure it has automation ID
+                if (!el.getAttribute('data-automation-id')) {
+                  const name = el.getAttribute('name') || el.getAttribute('id') || '';
+                  if (name) {
+                    el.setAttribute('data-automation-id', name);
+                  }
+                }
+              }
+            }
+          });
+        }
+      });
+    });
+
+    // Observe the entire form for changes
+    const form = document.querySelector('form');
+    if (form) {
+      observer.observe(form, { 
+        childList: true, 
+        subtree: true 
+      });
+    }
+  };
+
+  // Execute Workday-style initialization
+  ensureAutomationIds();
+  autoFocusFirstField();
+  observeDynamicFields();
+
+  console.log('[Test App] Workday-style initialization complete');
 }
 
 // Auto-initialize if GoApply is detected
