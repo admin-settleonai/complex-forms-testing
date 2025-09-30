@@ -1,6 +1,15 @@
 // GoApply Integration Helper
 // This ensures form fields are properly discovered by GoApply's instrumentation
 
+// Extend Window interface for GoApply properties
+declare global {
+  interface Window {
+    __goapplySessionId?: string;
+    __goapplyOwnerKey?: string;
+    __goapplyPublishMirrorEvent?: Function;
+  }
+}
+
 export function initializeGoApplyDiscovery() {
   // Wait for DOM to be fully loaded
   if (document.readyState === 'loading') {
