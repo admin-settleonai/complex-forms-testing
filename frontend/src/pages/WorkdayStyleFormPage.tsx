@@ -84,8 +84,9 @@ const WorkdayStyleFormPage: React.FC = () => {
   useEffect(() => {
     if (!formRef.current) return;
 
-    const handleExternalChange = (e: Event) => {
-      const target = e.target as HTMLInputElement;
+    const syncFromTarget = (
+      target: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+    ) => {
       if (!target.name) return;
 
       const fieldName = target.name as keyof FormData;
@@ -108,6 +109,16 @@ const WorkdayStyleFormPage: React.FC = () => {
       });
     };
 
+    const handleExternalChange = (e: Event) => {
+      const target = e.target as
+        | HTMLInputElement
+        | HTMLSelectElement
+        | HTMLTextAreaElement
+        | null;
+      if (!target) return;
+      syncFromTarget(target);
+    };
+
     // Listen for input and change events on all form inputs
     const inputs = formRef.current.querySelectorAll("input, select, textarea");
     inputs.forEach((input) => {
@@ -122,11 +133,12 @@ const WorkdayStyleFormPage: React.FC = () => {
           mutation.type === "attributes" &&
           mutation.attributeName === "value"
         ) {
-          const target = mutation.target as HTMLInputElement;
+          const target = mutation.target as
+            | HTMLInputElement
+            | HTMLSelectElement
+            | HTMLTextAreaElement;
           if (target.name) {
-            handleExternalChange(
-              new Event("change", { target: target as any }),
-            );
+            syncFromTarget(target);
           }
         }
       });
